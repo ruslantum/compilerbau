@@ -1,4 +1,4 @@
-PDefs.   Program ::= [Def] ;
+PDefs.        Program  ::= [Def] ;
 
 terminator Def "" ;
 
@@ -6,31 +6,35 @@ comment "/*" "*/" ;
 comment "//" ;
 comment "#" ;
 
-DFun.    Def    ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
+DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 
-ADecl.   Arg    ::= Type Id ;
+ADecl.        Arg  ::= Type Id ;
 
-SExp.        Stm ::= Exp ";" ;
-SReturn.     Stm ::= "return" Exp ";" ;
+SDecl.        Stm  ::= Type Id ";" ;
+SExp.         Stm  ::= Exp ";" ;
+SReturn.      Stm  ::= "return" Exp ";" ;
 
 separator Arg "," ;
 
 terminator Stm "" ;
 
-EInt.    Exp15  ::= Integer ;
-EString. Exp15  ::= String ;
-EQual.   Exp14  ::= [Qual] ;
-EShift.  Exp10   ::= Exp10  "<<"  Exp11 ;
+EInt.         Exp16  ::= Integer ;
+EString.      Exp16  ::= String ;
+EId.          Exp16  ::= Id ;
 
-QDecl.   Qual ::= Id ;
+EQual.        Exp14  ::= [Qual] ;
+EShiftLeft.   Exp10  ::= Exp10  "<<"  Exp11 ;
+EShiftRight.  Exp10  ::= Exp10  ">>"  Exp11 ;
+
+QDecl.        Qual  ::= Id ;
 
 separator nonempty Qual "::" ;
 
 separator Exp "," ;
 
-coercions Exp 15 ;
+coercions Exp 16 ;
 
-rules Type   ::= "int" | "string" ;
+rules         Type  ::= "int" | [Qual];
 
 token Id (letter (letter | digit | '_')*) ;
 separator nonempty Id "," ;

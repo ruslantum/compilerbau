@@ -8,6 +8,7 @@ compile_parser:
 
 test_rules:
 	dist/TestCPP test/hello.cc
+	dist/TestCPP test/greet.cc
 
 clean:
 	rm -rf dist

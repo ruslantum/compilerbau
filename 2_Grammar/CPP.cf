@@ -30,5 +30,7 @@ separator Exp "," ;
 
 coercions Exp 15 ;
 
+rules Type   ::= "int" | "string" ;
+
 token Id (letter (letter | digit | '_')*) ;
 separator nonempty Id "," ;

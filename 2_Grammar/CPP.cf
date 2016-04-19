@@ -58,7 +58,7 @@ terminator String "" ;
 terminator Id "" ;
 
 {- 15: indexing and qualified constants, function call -}
-EInd.         Exp15  ::= Exp15 "[" Exp16 "]";
+EInd.         Exp15  ::= Exp15 "[" Exp "]";
 EQual.        Exp15  ::= [Qual] ;
 EApp.         Exp15  ::= Id "(" [Exp] ")" ;
 
@@ -77,7 +77,7 @@ EPreDec.      Exp13  ::= "--" Exp14 ;
 ENeg.         Exp13  ::= "!" Exp14 ;
 
 {- 12: multiplication, division, remainder -}
-EMult.        Exp12  ::= Exp12 "+" Exp13 ;
+EMult.        Exp12  ::= Exp12 "*" Exp13 ;
 EDiv.         Exp12  ::= Exp12 "/" Exp13 ;
 EMod.         Exp12  ::= Exp12 "%" Exp13 ;
 

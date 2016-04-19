@@ -17,48 +17,82 @@ comment "#" ;
 
 
 {--- DEFINITIONS ----------------------------------------------}
-DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;    {- Function definition has type, identifier, argument list and body -} 
+DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;      {- Function definition has type, identifier, argument list and body -} 
+
+
+DUse.         Def  ::= "using" [Qual]  ";";
+
+{--- ARGUMENT LISTS, DECLARATION AND FUNCTION BODIES ----------}
 
 ADecl.        Arg  ::= Type Id ;                                {- Argument declaration has type and identifier -}
 
+
 separator Arg "," ;                                             {- Argument list is separated by "," -}
 
-SDecl.        Stm  ::= Type Id ";" ;                            {- Declaration followed by ";" can be used as statement" -}
+
+{--- STATEMENTS -----------------------------------------------}
+
 SExp.         Stm  ::= Exp ";" ;                                {- Expression followed by ";" can be used as statement -}
+SDecl.        Stm  ::= Type [Id] ";" ;                                {- Declaration followed by ";" can be used as statement" -}
+
+
 SReturn.      Stm  ::= "return" Exp ";" ;                       {- Statement returns an expression -}
 terminator Stm "" ;                                             {- Statement lists are not terminated -}
 
 
+{--- Literals -------------------------------------------------}
+
 
 {- 16: atomic expressions -}
 EInt.         Exp16  ::= Integer ;
+EDouble.      Exp16  ::= Double ;
 EString.      Exp16  ::= String ;
 EId.          Exp16  ::= Id ;
 
 {- 15: indexing and qualified constants, function call -}
 
+
 {- 14: structure projection, post in/decrement, dereferencing -}
 EQual.        Exp14  ::= [Qual] ;
+EPostInc.     Exp14  ::= Exp15 "++" ;
+EPostDec.     Exp14  ::= Exp15 "--" ;
+EDeref.       Exp14  ::= "*" Exp15 ;
 
 {- 13: pre in/decrement, dereferencing, negation -}
+EPreInc.      Exp13  ::= "++" Exp14 ;
+EPreDec.      Exp13  ::= "--" Exp14 ;
+ENeg.         Exp13  ::= "!" Exp14 ;
 
 {- 12: multiplication, division, remainder -}
+EMult.        Exp12  ::= Exp12 "+" Exp13 ;
+EDiv.         Exp12  ::= Exp12 "/" Exp13 ;
 
 {- 11: addition, substraction -}
+EAdd.        Exp11  ::= Exp11 "+" Exp12 ;
+EDiff.       Exp11  ::= Exp11 "-" Exp12 ;
 
 {- 10: left and right shift -}
 EShiftLeft.   Exp10  ::= Exp10  "<<"  Exp11 ;
 EShiftRight.  Exp10  ::= Exp10  ">>"  Exp11 ;
 
 {- 9: comparison -}
+ELessThn.     Exp9   ::= Exp9 "<" Exp10 ;
+EGrtrThn.     Exp9   ::= Exp9 ">" Exp10 ;
+ELessOrEq.    Exp9   ::= Exp9 "<=" Exp10 ;
+EGrtrOrEq.    Exp9   ::= Exp9 ">=" Exp10 ;
 
 {- 8: in(equality) -}
+EEq.          Exp8  ::= Exp8 "==" Exp9 ;
+ENEq.         Exp8  ::= Exp8 "!=" Exp9 ;
 
 {- 4: conjunction -}
+EConj.        Exp4  ::= Exp4 "&&" Exp5 ;
 
 {- 3: disjunction -}
+EDisj.        Exp3 ::= Exp3 "||" Exp4 ;
 
 {- 2: assignment, conditional -}
+EAssign.      Exp2 ::= Exp3 "=" Exp2 ;
 
 {- 1: exception -}
 
@@ -74,4 +108,5 @@ rules         Type  ::= "int" | [Qual];
 
 
 token Id (letter (letter | digit | '_')*) ;
+
 separator nonempty Id "," ;

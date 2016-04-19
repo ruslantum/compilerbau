@@ -17,7 +17,7 @@ comment "#" ;
 
 
 {--- DEFINITIONS ----------------------------------------------}
-DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;      {- Function definition has type, identifier, argument list and body -} 
+DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;      {- Function definition has type, identifier, argument list and body -}
 
 
 DUse.         Def  ::= "using" [Qual]  ";";
@@ -33,10 +33,15 @@ separator Arg "," ;                                             {- Argument list
 {--- STATEMENTS -----------------------------------------------}
 
 SExp.         Stm  ::= Exp ";" ;                                {- Expression followed by ";" can be used as statement -}
-SDecl.        Stm  ::= Type [Id] ";" ;                                {- Declaration followed by ";" can be used as statement" -}
-
+SDecl.        Stm  ::= Type [Id] ";" ;                          {- Declaration followed by ";" can be used as statement" -}
+STypeDef.     Stm  ::= "typedef" Type Id ";" ;                  {- Type definitions: a type and a name for it -}
 
 SReturn.      Stm  ::= "return" Exp ";" ;                       {- Statement returns an expression -}
+SWhile.       Stm  ::= "while" "(" Exp ")" Stm ;                {- While loops, with an expression in parentheses followed by a statement -}
+SIf.          Stm ::= "if" "(" Exp ")" Stm ;                    {- Conditionals: if with an expression in parentheses followed by a statement -}
+SIfElse.      Stm ::= "if" "(" Exp ")" Stm "else" Stm ;         {- and optionally by else and a statement -}
+SBlock.       Stm ::= "{" [Stm] "}" ;                           {- Blocks: any list of statement (including empty list) between curly brackets -}
+
 terminator Stm "" ;                                             {- Statement lists are not terminated -}
 
 
@@ -46,14 +51,22 @@ terminator Stm "" ;                                             {- Statement lis
 {- 16: atomic expressions -}
 EInt.         Exp16  ::= Integer ;
 EDouble.      Exp16  ::= Double ;
-EString.      Exp16  ::= String ;
-EId.          Exp16  ::= Id ;
+EString.      Exp16  ::= [String] ;
+EId.          Exp16  ::= [Id] ;
+
+terminator String "" ;
+terminator Id "" ;
 
 {- 15: indexing and qualified constants, function call -}
+EInd.         Exp15  ::= Exp15 "[" Exp16 "]";
+EQual.        Exp15  ::= [Qual] ;
+EApp.         Exp15  ::= Id "(" [Exp] ")" ;
 
+separator nonempty Qual "::" ;
+separator Exp "," ;
 
 {- 14: structure projection, post in/decrement, dereferencing -}
-EQual.        Exp14  ::= [Qual] ;
+EStrProj.     Exp14  ::= Exp14 "." Exp15 ;
 EPostInc.     Exp14  ::= Exp15 "++" ;
 EPostDec.     Exp14  ::= Exp15 "--" ;
 EDeref.       Exp14  ::= "*" Exp15 ;
@@ -66,10 +79,11 @@ ENeg.         Exp13  ::= "!" Exp14 ;
 {- 12: multiplication, division, remainder -}
 EMult.        Exp12  ::= Exp12 "+" Exp13 ;
 EDiv.         Exp12  ::= Exp12 "/" Exp13 ;
+EMod.         Exp12  ::= Exp12 "%" Exp13 ;
 
 {- 11: addition, substraction -}
-EAdd.        Exp11  ::= Exp11 "+" Exp12 ;
-EDiff.       Exp11  ::= Exp11 "-" Exp12 ;
+EAdd.         Exp11  ::= Exp11 "+" Exp12 ;
+EDiff.        Exp11  ::= Exp11 "-" Exp12 ;
 
 {- 10: left and right shift -}
 EShiftLeft.   Exp10  ::= Exp10  "<<"  Exp11 ;
@@ -82,29 +96,30 @@ ELessOrEq.    Exp9   ::= Exp9 "<=" Exp10 ;
 EGrtrOrEq.    Exp9   ::= Exp9 ">=" Exp10 ;
 
 {- 8: in(equality) -}
-EEq.          Exp8  ::= Exp8 "==" Exp9 ;
-ENEq.         Exp8  ::= Exp8 "!=" Exp9 ;
+EEq.          Exp8   ::= Exp8 "==" Exp9 ;
+ENEq.         Exp8   ::= Exp8 "!=" Exp9 ;
 
 {- 4: conjunction -}
-EConj.        Exp4  ::= Exp4 "&&" Exp5 ;
+EConj.        Exp4   ::= Exp4 "&&" Exp5 ;
 
 {- 3: disjunction -}
-EDisj.        Exp3 ::= Exp3 "||" Exp4 ;
+EDisj.        Exp3   ::= Exp3 "||" Exp4 ;
 
 {- 2: assignment, conditional -}
-EAssign.      Exp2 ::= Exp3 "=" Exp2 ;
+EAssign.      Exp2   ::= Exp3 "=" Exp2 ;
+ECond.        Exp2   ::= Exp2 "?" Exp3 ":" Exp3 ;
 
 {- 1: exception -}
 
-QDecl.        Qual  ::= Id ;
+QTempl.       Qual   ::= Id "<" [Type] ">" ;
+QDecl.        Qual   ::= Id ;
 
-separator nonempty Qual "::" ;
+separator Type "," ;
 
-separator Exp "," ;
 
 coercions Exp 16 ;
 
-rules         Type  ::= "int" | [Qual];
+rules         Type  ::= "int" | "double" | [Qual];
 
 
 token Id (letter (letter | digit | '_')*) ;

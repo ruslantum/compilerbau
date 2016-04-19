@@ -1,30 +1,66 @@
-PDefs.        Program  ::= [Def] ;
+ {-     Compiler-Construction Exercise 2 - Grammar
+        Definition of a grammar according to a textual description of a C++ subset
+        Textual Description: http://www1.digitalgrammars.com/ipl-book/assignments/assignment1/assignment1.html
 
-terminator Def "" ;
+        Authors: Ruslan Tumarkin, Leander Cordes, Benno Lauther
+ -}
 
-comment "/*" "*/" ;
+
+{--- PROGRAMS -------------------------------------------------}
+PDefs.        Program  ::= [Def] ;                              {- Program is sequence of definitions -}
+
+terminator Def "" ;                                             {- Definitions dont need a terminator -}
+
+comment "/*" "*/" ;                                             {- Different types of comments -}
 comment "//" ;
 comment "#" ;
 
-DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;
 
-ADecl.        Arg  ::= Type Id ;
+{--- DEFINITIONS ----------------------------------------------}
+DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;    {- Function definition has type, identifier, argument list and body -} 
 
-SDecl.        Stm  ::= Type Id ";" ;
-SExp.         Stm  ::= Exp ";" ;
-SReturn.      Stm  ::= "return" Exp ";" ;
+ADecl.        Arg  ::= Type Id ;                                {- Argument declaration has type and identifier -}
 
-separator Arg "," ;
+separator Arg "," ;                                             {- Argument list is separated by "," -}
 
-terminator Stm "" ;
+SDecl.        Stm  ::= Type Id ";" ;                            {- Declaration followed by ";" can be used as statement" -}
+SExp.         Stm  ::= Exp ";" ;                                {- Expression followed by ";" can be used as statement -}
+SReturn.      Stm  ::= "return" Exp ";" ;                       {- Statement returns an expression -}
+terminator Stm "" ;                                             {- Statement lists are not terminated -}
 
+
+
+{- 16: atomic expressions -}
 EInt.         Exp16  ::= Integer ;
 EString.      Exp16  ::= String ;
 EId.          Exp16  ::= Id ;
 
+{- 15: indexing and qualified constants, function call -}
+
+{- 14: structure projection, post in/decrement, dereferencing -}
 EQual.        Exp14  ::= [Qual] ;
+
+{- 13: pre in/decrement, dereferencing, negation -}
+
+{- 12: multiplication, division, remainder -}
+
+{- 11: addition, substraction -}
+
+{- 10: left and right shift -}
 EShiftLeft.   Exp10  ::= Exp10  "<<"  Exp11 ;
 EShiftRight.  Exp10  ::= Exp10  ">>"  Exp11 ;
+
+{- 9: comparison -}
+
+{- 8: in(equality) -}
+
+{- 4: conjunction -}
+
+{- 3: disjunction -}
+
+{- 2: assignment, conditional -}
+
+{- 1: exception -}
 
 QDecl.        Qual  ::= Id ;
 
@@ -35,6 +71,7 @@ separator Exp "," ;
 coercions Exp 16 ;
 
 rules         Type  ::= "int" | [Qual];
+
 
 token Id (letter (letter | digit | '_')*) ;
 separator nonempty Id "," ;

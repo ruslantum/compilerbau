@@ -25,6 +25,8 @@ DUse.         Def  ::= "using" [Qual]  ";";
 {--- ARGUMENT LISTS, DECLARATION AND FUNCTION BODIES ----------}
 
 ADecl.        Arg  ::= Type Id ;                                {- Argument declaration has type and identifier -}
+ADeclAddr.    Arg  ::= Type "&" Id ;                            {- Argument declaration has type and identifier -}
+ADeclConst.   Arg  ::= "const" Arg ;                            {- optionally preceded by the specifier constr -}
 
 
 separator Arg "," ;                                             {- Argument list is separated by "," -}
@@ -38,9 +40,9 @@ STypeDef.     Stm  ::= "typedef" Type Id ";" ;                  {- Type definiti
 
 SReturn.      Stm  ::= "return" Exp ";" ;                       {- Statement returns an expression -}
 SWhile.       Stm  ::= "while" "(" Exp ")" Stm ;                {- While loops, with an expression in parentheses followed by a statement -}
-SIf.          Stm ::= "if" "(" Exp ")" Stm ;                    {- Conditionals: if with an expression in parentheses followed by a statement -}
-SIfElse.      Stm ::= "if" "(" Exp ")" Stm "else" Stm ;         {- and optionally by else and a statement -}
-SBlock.       Stm ::= "{" [Stm] "}" ;                           {- Blocks: any list of statement (including empty list) between curly brackets -}
+SIf.          Stm  ::= "if" "(" Exp ")" Stm ;                   {- Conditionals: if with an expression in parentheses followed by a statement -}
+SIfElse.      Stm  ::= "if" "(" Exp ")" Stm "else" Stm ;        {- and optionally by else and a statement -}
+SBlock.       Stm  ::= "{" [Stm] "}" ;                          {- Blocks: any list of statement (including empty list) between curly brackets -}
 
 terminator Stm "" ;                                             {- Statement lists are not terminated -}
 
@@ -60,7 +62,7 @@ terminator Id "" ;
 {- 15: indexing and qualified constants, function call -}
 EInd.         Exp15  ::= Exp15 "[" Exp "]";
 EQual.        Exp15  ::= [Qual] ;
-EApp.         Exp15  ::= Id "(" [Exp] ")" ;
+EApp.         Exp15  ::= Exp15 "(" [Exp] ")" ;
 
 separator nonempty Qual "::" ;
 separator Exp "," ;
@@ -110,6 +112,7 @@ EAssign.      Exp2   ::= Exp3 "=" Exp2 ;
 ECond.        Exp2   ::= Exp2 "?" Exp3 ":" Exp3 ;
 
 {- 1: exception -}
+EExp.         Exp1   ::= "throw" Exp1 ;
 
 QTempl.       Qual   ::= Id "<" [Type] ">" ;
 QDecl.        Qual   ::= Id ;

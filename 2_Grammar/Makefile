@@ -11,8 +11,8 @@ test_rules:
 	dist/TestCPP test/02_greet.cc
 	dist/TestCPP test/03_med.cc
 	dist/TestCPP test/04_grade.cc
-	#	dist/TestCPP test/05_palin.cc
-	#	dist/TestCPP test/06_grammar.cc
+	dist/TestCPP test/05_palin.cc
+	dist/TestCPP test/06_grammar.cc
 
 clean:
 	rm -rf dist

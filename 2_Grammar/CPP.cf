@@ -17,16 +17,24 @@ comment "#" ;
 
 
 {--- DEFINITIONS ----------------------------------------------}
-DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;      {- Function definition has type, identifier, argument list and body -}
-
-
+DFun.         Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;    {- Function definition has type, identifier, argument list and body,
+                                                                   A function body is either a list of statements enclosed in curly brackets { and } -}
+DFunProt.     Def  ::= Type Id "(" [Arg] ")" ";" ;              {- or an empty body consisting of a semicolon ;-}
+DTypeDef.     Def  ::= "typedef" Type Id ";" ;                  {- Many statements can be used as top-level definitions -}
+DDecls.       Def  ::= Type [Id] ";" ;
+DInit.        Def  ::= Type Id "=" Exp ";" ;
+DStruc.       Def  ::= "struct" Id "{" [Stm] "}" ";" ;
 DUse.         Def  ::= "using" [Qual]  ";";
 
 {--- ARGUMENT LISTS, DECLARATION AND FUNCTION BODIES ----------}
 
-ADecl.        Arg  ::= Type Id ;                                {- Argument declaration has type and identifier -}
-ADeclAddr.    Arg  ::= Type "&" Id ;                            {- Argument declaration has type and identifier -}
-ADeclConst.   Arg  ::= "const" Arg ;                            {- optionally preceded by the specifier constr -}
+ADeclBase.    Arg  ::= Type ;                                   {- An argument declaration always has a type -}
+ADeclBaseAdr. Arg  ::= Type "&" ;                               {- An argument declaration always has a type -}
+ADecl.        Arg  ::= Type Id ;                                {- This type is optionally followed by an identifier -}
+ADeclAdr.     Arg  ::= Type "&" Id ;                            {- This type is optionally followed by an identifier -}
+ADeclInit.    Arg  ::= Type Id "=" Exp ;                        {- or an identifier and an initialization -}
+ADeclInitAdr. Arg  ::= Type "&" Id "=" Exp ;                    {- or an identifier and an initialization -}
+ADeclConst.   Arg  ::= "const" Arg ;                            {- and optionally preceded by the specifier constr -}
 
 
 separator Arg "," ;                                             {- Argument list is separated by "," -}
@@ -36,6 +44,7 @@ separator Arg "," ;                                             {- Argument list
 
 SExp.         Stm  ::= Exp ";" ;                                {- Expression followed by ";" can be used as statement -}
 SDecl.        Stm  ::= Type [Id] ";" ;                          {- Declaration followed by ";" can be used as statement" -}
+SInit.        Stm  ::= Type Id "=" Exp ";" ;
 STypeDef.     Stm  ::= "typedef" Type Id ";" ;                  {- Type definitions: a type and a name for it -}
 
 SReturn.      Stm  ::= "return" Exp ";" ;                       {- Statement returns an expression -}
@@ -51,6 +60,8 @@ terminator Stm "" ;                                             {- Statement lis
 
 
 {- 16: atomic expressions -}
+ETrue.        Exp16  ::= "true" ;
+EFalse.       Exp16  ::= "false" ;
 EInt.         Exp16  ::= Integer ;
 EDouble.      Exp16  ::= Double ;
 EString.      Exp16  ::= [String] ;
@@ -69,6 +80,7 @@ separator Exp "," ;
 
 {- 14: structure projection, post in/decrement, dereferencing -}
 EStrProj.     Exp14  ::= Exp14 "." Exp15 ;
+EStrProj2.    Exp14  ::= Exp14 "->" Exp15 ;
 EPostInc.     Exp14  ::= Exp15 "++" ;
 EPostDec.     Exp14  ::= Exp15 "--" ;
 EDeref.       Exp14  ::= "*" Exp15 ;
@@ -122,7 +134,7 @@ separator Type "," ;
 
 coercions Exp 16 ;
 
-rules         Type  ::= "int" | "double" | [Qual];
+rules         Type  ::= "bool" | "double" | "int" | "void" | [Qual];
 
 
 token Id (letter (letter | digit | '_')*) ;

@@ -67,7 +67,6 @@ EDouble.      Exp16  ::= Double ;
 EString.      Exp16  ::= [String] ;
 
 terminator String "" ;
-terminator Id "" ;
 
 {- 15: indexing and qualified constants, function call -}
 EInd.         Exp15  ::= Exp15 "[" Exp "]";
@@ -75,7 +74,7 @@ EQual.        Exp15  ::= [Qual] ;
 EApp.         Exp15  ::= Exp15 "(" [Exp] ")" ;
 
 separator nonempty Qual "::" ;
-separator Exp "," ;
+separator nonempty Exp "," ;
 
 {- 14: structure projection, post in/decrement, dereferencing -}
 EStrProj.     Exp14  ::= Exp14 "." Exp15 ;

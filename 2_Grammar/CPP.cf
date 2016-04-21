@@ -65,7 +65,6 @@ EFalse.       Exp16  ::= "false" ;
 EInt.         Exp16  ::= Integer ;
 EDouble.      Exp16  ::= Double ;
 EString.      Exp16  ::= [String] ;
-EId.          Exp16  ::= [Id] ;
 
 terminator String "" ;
 terminator Id "" ;

@@ -13,6 +13,7 @@ test_rules:
 	dist/TestCPP test/04_grade.cc
 	dist/TestCPP test/05_palin.cc
 	dist/TestCPP test/06_grammar.cc
+	cd lab1-testsuite-larger; ./progs-test-lab1 ../CPP.cf
 
 clean:
 	rm -rf dist

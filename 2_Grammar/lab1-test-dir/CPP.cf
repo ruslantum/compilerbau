@@ -1,0 +1,162 @@
+ {-     Compiler-Construction Exercise 2 - Grammar
+        Definition of a grammar according to a textual description of a C++ subset
+        Textual Description: http://www1.digitalgrammars.com/ipl-book/assignments/assignment1/assignment1.html
+
+        Authors: Ruslan Tumarkin, Leander Cordes, Benno Lauther
+ -}
+
+
+{--- PROGRAMS -------------------------------------------------}
+PDefs.              Program  ::= [Def] ;                              {- Program is sequence of definitions -}
+
+terminator Def "" ;                                                   {- Definitions dont need a terminator -}
+
+comment "/*" "*/" ;                                                   {- Different types of comments -}
+comment "//" ;
+comment "#" ;
+
+
+{--- DEFINITIONS ----------------------------------------------}
+DFun.               Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;    {- Function definition has type, identifier, argument list and body,
+                                                                      {- A function body is either a list of statements enclosed in curly brackets { and } -}
+DFunInl.            Def  ::= "inline" Type Id "(" [Arg] ")" "{" [Stm] "}" ; {- A function can optionally be prefixed by inline -}
+DFunProt.           Def  ::= Type Id "(" [Arg] ")" ";" ;              {- or an empty body consisting of a semicolon ;-}
+DFunProtInl.        Def  ::= "inline" Type Id "(" [Arg] ")" ";" ;     {- A function can optionally be prefixed by inline -}
+DTypeDef.           Def  ::= "typedef" Type Id ";" ;                  {- Many statements can be used as top-level definitions -}
+DDecls.             Def  ::= Type [Id] ";" ;
+DInit.              Def  ::= Type Id "=" Exp ";" ;
+DInitRef.           Def  ::= Type "&" Id "=" Exp ";" ;
+DStruc.             Def  ::= "struct" Id "{" [Decl] "}" ";" ;
+DUse.               Def  ::= "using" [Qual]  ";";
+DConst.             Def  ::= "const" Def;
+
+{--- ARGUMENT LISTS, DECLARATION AND FUNCTION BODIES ----------}
+
+ADeclBase.          Arg  ::= Type ;                                   {- An argument declaration always has a type -}
+ADeclBaseCns.       Arg  ::= "const" Type ;                           {- and optionally preceded by the specifier const -}
+ADeclBaseAdr.       Arg  ::= Type "&" ;                               {- Arguments passed by reference (&) -}
+ADeclBaseAdrCns.    Arg  ::= "const" Type "&" ;                       {- and optionally preceded by the specifier const -}
+ADecl.              Arg  ::= Type Id ;                                {- This type is optionally followed by an identifier -}
+ADeclCns.           Arg  ::= "const" Type Id ;                        {- and optionally preceded by the specifier const -}
+ADeclAdr.           Arg  ::= Type "&" Id ;                            {- Arguments passed by reference and optionally followed by an identifier -}
+ADeclAdrCns.        Arg  ::= "const" Type "&" Id ;                    {- and optionally preceded by the specifier const -}
+ADeclInit.          Arg  ::= Type Id "=" Exp ;                        {- or an identifier and an initialization -}
+ADeclInitCns.       Arg  ::= "const" Type Id "=" Exp ;                {- and optionally preceded by the specifier const -}
+ADeclInitAdr.       Arg  ::= Type "&" Id "=" Exp ;                    {- Arguments passed by reference and an identifier and an initialization -}
+ADeclInitAdrCns.    Arg  ::= "const" Type "&" Id "=" Exp ;            {- and optionally preceded by the specifier const-}
+
+
+separator Arg "," ;                                             {- Argument list is separated by "," -}
+
+
+{--- STATEMENTS -----------------------------------------------}
+
+SExp.               Stm  ::= Exp ";" ;                                {- Expression followed by ";" can be used as statement -}
+SDecl.              Stm  ::= Type [Id] ";" ;                          {- variable declarations followed by ";" can be used as statement" -}
+SInit.              Stm  ::= Type Id "=" Exp ";" ;                    {- variable initializations -}
+SInitRef.           Stm  ::= Type "&" Id "=" Exp ";" ;                {- variable declarations by reference -}
+SInitCnst.          Stm  ::= "const" Type Id "=" Exp ";" ;            {- variable initializations optionally preceded by the specifier const -}
+SInitCnstRef.       Stm  ::= "const" Type "&" Id "=" Exp ";" ;        {- variable initializations by reference optionally preceded by the specifier const -}
+STypeDef.           Stm  ::= "typedef" Type Id ";" ;                  {- Type definitions: a type and a name for it -}
+SStruc.             Stm  ::= "struct" Id "{" [Decl] "}" ";" ;         {- Structure definitions: a name and a list of declarations -}
+
+SReturn.            Stm  ::= "return" Exp ";" ;                       {- Statement returns an expression -}
+SWhile.             Stm  ::= "while" "(" Exp ")" Stm ;                {- While loops, with an expression in parentheses followed by a statement -}
+SDoWhile.           Stm  ::= "do" Stm "while" "(" Exp ")" ";" ;       {- Do-while loops, with an expression in parentheses after the loop body -}
+SForDecl.           Stm  ::= "for" "(" Type Id ";" Exp ";" Exp ")" Stm ;      {- For loops, with a declaration and two expressions in parentheses followed by a statement -}
+SForInit.           Stm  ::= "for" "(" Type Id "=" Exp ";" Exp ";" Exp ")" Stm ;      {- For loops, with a declaration and two expressions in parentheses followed by a statement -}
+SIf.                Stm  ::= "if" "(" Exp ")" Stm ;                   {- Conditionals: if with an expression in parentheses followed by a statement -}
+SIfElse.            Stm  ::= "if" "(" Exp ")" Stm "else" Stm ;        {- and optionally by else and a statement -}
+SBlock.             Stm  ::= "{" [Stm] "}" ;                          {- Blocks: any list of statement (including empty list) between curly brackets -}
+
+StructDecl.         Decl ::= Type Id;                                 {- List of declarations for stucts -}
+
+terminator Decl ";" ;                                                 {- List of declarations for stucts terminated by ; -}
+terminator Stm "" ;                                                   {- Statement lists are not terminated -}
+
+
+{--- Literals -------------------------------------------------}
+
+
+{- 16: atomic expressions -}
+ETrue.              Exp16  ::= "true" ;
+EFalse.             Exp16  ::= "false" ;
+EInt.               Exp16  ::= Integer ;
+EDouble.            Exp16  ::= Double ;
+EChar.              Exp16  ::= Char;
+EString.            Exp16  ::= [String] ;
+
+terminator nonempty String "" ;
+
+{- 15: indexing and qualified constants, function call -}
+EInd.               Exp15  ::= Exp15 "[" Exp "]";
+EQual.              Exp15  ::= [Qual] ;
+EApp.               Exp15  ::= Exp15 "(" [Exp] ")" ;
+
+separator nonempty Qual "::" ;
+separator Exp "," ;
+
+{- 14: structure projection, post in/decrement, dereferencing -}
+EStrProj.           Exp14  ::= Exp14 "." Exp15 ;
+EStrProj2.          Exp14  ::= Exp14 "->" Exp15 ;
+EPostInc.           Exp14  ::= Exp15 "++" ;
+EPostDec.           Exp14  ::= Exp15 "--" ;
+EDeref.             Exp14  ::= "*" Exp15 ;
+
+{- 13: pre in/decrement, dereferencing, negation -}
+EPreInc.            Exp13  ::= "++" Exp14 ;
+EPreDec.            Exp13  ::= "--" Exp14 ;
+ENeg.               Exp13  ::= "!" Exp14 ;
+
+{- 12: multiplication, division, remainder -}
+EMult.              Exp12  ::= Exp12 "*" Exp13 ;
+EDiv.               Exp12  ::= Exp12 "/" Exp13 ;
+EMod.               Exp12  ::= Exp12 "%" Exp13 ;
+
+{- 11: addition, substraction -}
+EAdd.               Exp11  ::= Exp11 "+" Exp12 ;
+EDiff.              Exp11  ::= Exp11 "-" Exp12 ;
+
+{- 10: left and right shift -}
+EShiftLeft.         Exp10  ::= Exp10  "<<"  Exp11 ;
+EShiftRight.        Exp10  ::= Exp10  ">>"  Exp11 ;
+
+{- 9: comparison -}
+ELessThn.           Exp9   ::= Exp9 "<" Exp10 ;
+EGrtrThn.           Exp9   ::= Exp9 ">" Exp10 ;
+ELessOrEq.          Exp9   ::= Exp9 "<=" Exp10 ;
+EGrtrOrEq.          Exp9   ::= Exp9 ">=" Exp10 ;
+
+{- 8: in(equality) -}
+EEq.                Exp8   ::= Exp8 "==" Exp9 ;
+ENEq.               Exp8   ::= Exp8 "!=" Exp9 ;
+
+{- 4: conjunction -}
+EConj.              Exp4   ::= Exp4 "&&" Exp5 ;
+
+{- 3: disjunction -}
+EDisj.              Exp3   ::= Exp3 "||" Exp4 ;
+
+{- 2: assignment, conditional -}
+EAssign.            Exp2   ::= Exp2 "=" Exp3 ;
+EAssignPlus.        Exp2   ::= Exp2 "+=" Exp3 ;
+EAssignPlus.        Exp2   ::= Exp2 "-=" Exp3 ;
+ECond.              Exp2   ::= Exp2 "?" Exp3 ":" Exp3 ;
+
+{- 1: exception -}
+EExp.               Exp1   ::= "throw" Exp1 ;
+
+QTempl.             Qual   ::= Id "<" [Type] ">" ;
+QDecl.              Qual   ::= Id ;
+
+separator nonempty Type "," ;
+
+
+coercions Exp 16 ;
+
+rules               Type  ::= "bool" | "double" | "int" | "void" | [Qual];
+
+
+token Id (letter (letter | digit | '_')*) ;
+
+separator nonempty Id "," ;

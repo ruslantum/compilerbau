@@ -45,10 +45,14 @@ separator Arg "," ;                                             {- Argument list
 SExp.         Stm  ::= Exp ";" ;                                {- Expression followed by ";" can be used as statement -}
 SDecl.        Stm  ::= Type [Id] ";" ;                          {- Declaration followed by ";" can be used as statement" -}
 SInit.        Stm  ::= Type Id "=" Exp ";" ;
+SInitCnst.    Stm  ::= "const" Type Id "=" Exp ";" ;
+SInitCnstRef. Stm  ::= "const" Type "&" Id "=" Exp ";" ;
 STypeDef.     Stm  ::= "typedef" Type Id ";" ;                  {- Type definitions: a type and a name for it -}
 
 SReturn.      Stm  ::= "return" Exp ";" ;                       {- Statement returns an expression -}
 SWhile.       Stm  ::= "while" "(" Exp ")" Stm ;                {- While loops, with an expression in parentheses followed by a statement -}
+SDoWhile.     Stm  ::= "do" Stm "while" "(" Exp ")" ";" ;       {- Do-while loops, with an expression in parentheses after the loop body -}
+SFor.         Stm  ::= "for" "(" Stm Exp ";" Exp ")" Stm ;      {- For loops, with a declaration and two expressions in parentheses followed by a statement -}
 SIf.          Stm  ::= "if" "(" Exp ")" Stm ;                   {- Conditionals: if with an expression in parentheses followed by a statement -}
 SIfElse.      Stm  ::= "if" "(" Exp ")" Stm "else" Stm ;        {- and optionally by else and a statement -}
 SBlock.       Stm  ::= "{" [Stm] "}" ;                          {- Blocks: any list of statement (including empty list) between curly brackets -}
@@ -64,9 +68,10 @@ ETrue.        Exp16  ::= "true" ;
 EFalse.       Exp16  ::= "false" ;
 EInt.         Exp16  ::= Integer ;
 EDouble.      Exp16  ::= Double ;
+EChar.        Exp16  ::= Char;
 EString.      Exp16  ::= [String] ;
 
-terminator String "" ;
+terminator nonempty String "" ;
 
 {- 15: indexing and qualified constants, function call -}
 EInd.         Exp15  ::= Exp15 "[" Exp "]";
@@ -74,7 +79,7 @@ EQual.        Exp15  ::= [Qual] ;
 EApp.         Exp15  ::= Exp15 "(" [Exp] ")" ;
 
 separator nonempty Qual "::" ;
-separator nonempty Exp "," ;
+separator Exp "," ;
 
 {- 14: structure projection, post in/decrement, dereferencing -}
 EStrProj.     Exp14  ::= Exp14 "." Exp15 ;

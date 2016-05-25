@@ -1,10 +1,13 @@
-all: clean compile_rules compile_parser test_rules
+all: clean compile_rules compile_parser compile_testsuite test_rules
 
 compile_rules:
 	bnfc -m -o dist CPP.cf
 
 compile_parser:
 	cd dist; make
+
+compile_testsuite:
+	cd lab1-testsuite-larger; ghc --make -o progs-test-lab1 progs-test-lab1.hs
 
 test_rules:
 	dist/TestCPP test/01_hello.cc
@@ -17,3 +20,4 @@ test_rules:
 
 clean:
 	rm -rf dist
+	cd lab1-testsuite-larger; rm -rf lab1-test-dir progs-test-lab1.hi progs-test-lab1.o progs-test-lab1

@@ -2,7 +2,11 @@
         Definition of a grammar according to a textual description of a C++ subset
         Textual Description: http://www1.digitalgrammars.com/ipl-book/assignments/assignment1/assignment1.html
 
-        Authors: Ruslan Tumarkin, Leander Cordes, Benno Lauther
+        Authors
+          - Ruslan Tumarkin:  test program 1, 4
+          - Benno Lauther:    test program 2, 5
+          - Leander Cordes:   test program 3, 6
+
  -}
 
 

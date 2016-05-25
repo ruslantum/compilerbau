@@ -17,7 +17,7 @@ comment "#" ;
 
 
 {--- DEFINITIONS ----------------------------------------------}
-DFun.               Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;    {- Function definition has type, identifier, argument list and body,
+DFun.               Def  ::= Type Id "(" [Arg] ")" "{" [Stm] "}" ;    {- Function definition has type, identifier, argument list and body, -}
                                                                       {- A function body is either a list of statements enclosed in curly brackets { and } -}
 DFunInl.            Def  ::= "inline" Type Id "(" [Arg] ")" "{" [Stm] "}" ; {- A function can optionally be prefixed by inline -}
 DFunProt.           Def  ::= Type Id "(" [Arg] ")" ";" ;              {- or an empty body consisting of a semicolon ;-}

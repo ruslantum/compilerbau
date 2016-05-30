@@ -9,28 +9,58 @@ type Result = Err String
 typecheck   :: Program -> Err ()
 typecheck p = fail "Not yet a typechecker"
 
-checkStatements :: Env -> [Stm] -> Err ()
-checkStatements environment statements = fail "not yet implemented"
+checkStatements :: Environment -> [Stm] -> Err ()
+checkStatements environment [] = return ()
+checkStatements environment (currentStm:rest) =  do newEnvironment <- checkStatement environment currentStm
+                                                  checkStatements newEnvironment rest
 
-checkStatement  :: Env -> Stm -> Err Env
+checkStatement  :: Environment -> Stm -> Err Environment
 checkStatement environment statement  = 
   case statement of
-      SExp exp                ->
-      SDecls t ids            -> -- add to env
-      SInit t id exp          ->
-      SReturn exp             ->
-      SReturnVoid             ->
-      SWhile exp stm          ->
-      SBlock stms             ->
-      SIfElse exp stm1 stm2   -> 
+      SExp exp                -> fail "Not yet implemented"
+      SDecls t ids            -> fail "Not yet implemented" -- add to env
+      SInit t id exp          -> fail "Not yet implemented"
+      SReturn exp             -> fail "Not yet implemented"
+      SReturnVoid             -> fail "Not yet implemented"
+      SWhile exp stm          -> fail "Not yet implemented"
+      SBlock stms             -> fail "Not yet implemented"
+      SIfElse exp stm1 stm2   -> fail "Not yet implemented"
 
-checkExpression :: Env -> Exp -> Type -> Err ()
-checkExpression environment expression type = fail "not yet implemented"
+checkExpression :: Environment -> Exp -> Type -> Err ()
+checkExpression environment expression tp = 
+  do newType <- inferExpression environment expression
+    if newType /= tp
+      then fail (printTree expression ++ " has type " ++ printTree newType ++ " expected " ++ printTree tp)
+      else return ()
 
-inferExpression :: Env -> Exp -> Err Type 
-inferExpression environment expression = fail "not yet implemented"
-
-
+inferExpression :: Environment -> Exp -> Err Type 
+inferExpression environment expression = 
+  case expression of
+    ETrue               -> return Type_bool
+    EFalse              -> return Type_bool
+    EInt _              -> return Type_int
+    EDouble _           -> return Type_double
+    EString _           -> return Type_string
+    EId id              -> fail "Not yet implemented"
+    EApp id expressions -> fail "Not yet implemented"
+    EPIncr expression   -> fail "Not yet implemented"
+    EPDecr expression   -> fail "Not yet implemented"
+    EIncr expression    -> fail "Not yet implemented"
+    EDecr expression    -> fail "Not yet implemented"
+    ETimes e1 e2        -> fail "Not yet implemented"
+    EDiv e1 e2          -> fail "Not yet implemented"
+    EPlus e1 e2         -> fail "Not yet implemented"
+    EMinus e1 e2        -> fail "Not yet implemented"
+    ELt e1 e2           -> fail "Not yet implemented"
+    EGt e1 e2           -> fail "Not yet implemented"
+    ELtEq e1 e2         -> fail "Not yet implemented"
+    EGtEq e1 e2         -> fail "Not yet implemented"
+    EEq e1 e2           -> fail "Not yet implemented"
+    ENEq e1 e2          -> fail "Not yet implemented"
+    EAnd e1 e2          -> fail "Not yet implemented"
+    EOr e1 e2           -> fail "Not yet implemented"
+    EAss e1 e2          -> fail "Not yet implemented"
+    ETyped expression tp -> fail "Not yet implemented"
 
 
 
@@ -93,4 +123,24 @@ transType x = case x of
   Type_double -> failure x
   Type_void -> failure x
   Type_string -> failure x
+
+
+type Environment = [[(Id, Type)]] -- List of list of ids+types
+emptyEnvironment :: Environment
+emptyEnvironment = [[]]
+
+addVariable :: Environment -> Id -> Type -> Err Environment
+addVariable (scope:rest) id tp = 
+    case lookup id scope of
+      Nothing -> return (((id, tp):scope):rest)
+      Just _  -> fail ("Variable " ++ printTree id ++ " already declared.")
+
+lookupVariable :: Environment -> Id -> Err Type
+lookupVariable [] id = fail $ "Unknown variable " ++ printTree id ++ "."
+lookupVar (scope:rest) id = case lookup id scope of
+                             Nothing  -> lookupVar rest id
+                             Just tp  -> return tp
+
+addScope :: Environment -> Environment
+addScope env = []:env -- Push new scope
 

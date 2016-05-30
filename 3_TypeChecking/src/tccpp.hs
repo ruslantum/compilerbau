@@ -10,16 +10,16 @@ import AbsCPP
 
 import TypeCheckerCPP
 
-checkFile :: String -> IO () 
+checkFile :: String -> IO ()
 checkFile s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
-                           exitFailure 
+                           exitFailure
             Ok  tree -> case typecheck tree of
                           Bad err -> do putStrLn "TYPE ERROR"
                                         putStrLn err
-                                        exitFailure 
-                          Ok _    -> interpret tree
+                                        exitFailure
+                          Ok _    -> do putStrLn "OK"
 
 main :: IO ()
 main =  do args <- getArgs

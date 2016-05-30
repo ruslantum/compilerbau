@@ -50,7 +50,7 @@ ADeclInitAdr.       Arg  ::= Type "&" Id "=" Exp ;                    {- Argumen
 ADeclInitAdrCns.    Arg  ::= "const" Type "&" Id "=" Exp ;            {- and optionally preceded by the specifier const-}
 
 
-separator Arg "," ;                                             {- Argument list is separated by "," -}
+separator Arg "," ;                                                   {- Argument list is separated by "," -}
 
 
 {--- STATEMENTS -----------------------------------------------}

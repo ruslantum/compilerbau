@@ -9,6 +9,7 @@ import PrintCPP
 import AbsCPP
 
 import TypeCheckerCPP
+import ErrM
 
 checkFile :: String -> IO ()
 checkFile s = case pProgram (myLexer s) of
@@ -22,7 +23,7 @@ checkFile s = case pProgram (myLexer s) of
                           Ok _    -> do putStrLn "OK"
 
 main :: IO ()
-main =  do args <- getArgs
+main = do args <- getArgs
           case args of
             [file] -> readFile file >>= checkFile
             _      -> do putStrLn "Usage: tcpp <target file>"

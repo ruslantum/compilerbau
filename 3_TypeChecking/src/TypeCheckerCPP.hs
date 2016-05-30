@@ -9,7 +9,7 @@ import ErrM
 type Result = Err String
 
 typecheck   :: Program -> Err ()
-typecheck p = fail "Not yet a typechecker"
+typecheck (PDefs definitions) = fail "TypeCheckerCPP::typecheck not yet implemented"
 
 checkStatements :: Environment -> [Stm] -> Err ()
 checkStatements environment [] = return ()

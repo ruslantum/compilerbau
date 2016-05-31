@@ -9,7 +9,20 @@ import ErrM
 type Result = Err String
 
 typecheck   :: Program -> Err ()
-typecheck (PDefs definitions) = fail "TypeCheckerCPP::typecheck not yet implemented"
+typecheck (PDefs definitions) = checkDefinitions emptyEnvironment definitions
+
+
+checkDefinitions :: Environment -> [Def] -> Err()
+checkDefinitions environment [] = return ()
+checkDefinitions environment (currentDef: rest) = 
+  do 
+    newEnvironment <- checkDefinition environment currentDef
+    checkDefinitions newEnvironment rest
+
+checkDefinition :: Environment -> Def -> Err Environment
+checkDefinition environment definition = 
+  case definition of 
+    DFun tp id arguments statements -> fail "Not yet implemented"-- add function definition to environment
 
 checkStatements :: Environment -> [Stm] -> Err ()
 checkStatements environment [] = return ()
@@ -52,7 +65,12 @@ inferExpression environment expression =
     EDecr expression    -> fail "Not yet implemented"
     ETimes e1 e2        -> fail "Not yet implemented"
     EDiv e1 e2          -> fail "Not yet implemented"
-    EPlus e1 e2         -> fail "Not yet implemented"
+    EPlus e1 e2         -> do
+      e1Type <- inferExpression environment e1 
+      e2Type <- inferExpression environment e2 
+      if e1Type == e2Type 
+        then return e1Type
+        else failOperandTypesNotEqual e1 e1Type e2 e2Type
     EMinus e1 e2        -> fail "Not yet implemented"
     ELt e1 e2           -> fail "Not yet implemented"
     EGt e1 e2           -> fail "Not yet implemented"
@@ -66,6 +84,10 @@ inferExpression environment expression =
     ETyped expression tp -> fail "Not yet implemented"
 
 
+
+failOperandTypesNotEqual:: Exp -> Type -> Exp -> Type -> Err Type
+failOperandTypesNotEqual e1 t1 e2 t2 = 
+  fail (printTree e1 ++ " has type " ++ printTree t1 ++ " but " ++ printTree e2 ++ " has type " ++ printTree t2)
 
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
@@ -138,11 +160,12 @@ addVariable (scope:rest) id tp =
       Nothing -> return (((id, tp):scope):rest)
       Just _  -> fail ("Variable " ++ printTree id ++ " already declared.")
 
-lookupVariable :: Environment -> Id -> Err Type
-lookupVariable [] id = fail $ "Unknown variable " ++ printTree id ++ "."
-lookupVar (scope:rest) id = case lookup id scope of
-                             Nothing  -> lookupVar rest id
-                             Just tp  -> return tp
+lookupIdentifier :: Environment -> Id -> Err Type
+lookupIdentifier [] id = fail $ "Unknown identifier " ++ printTree id ++ "."
+lookupIdentifier (scope:rest) id = 
+  case lookup id scope of
+    Nothing  -> lookupIdentifier rest id
+    Just tp  -> return tp
 
 addScope :: Environment -> Environment
 addScope env = []:env -- Push new scope

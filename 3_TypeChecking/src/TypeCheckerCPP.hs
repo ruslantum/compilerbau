@@ -5,6 +5,9 @@
 -- *
 -- *   - Ruslan Tumarkin
 -- *   - Benno Lauther
+-- * 
+-- * TODO: Extend Environment by function definitions à la "Id [Type] Type" in first run
+-- * TODO: Typecheck each function in the resulting Environment
 
 module TypeCheckerCPP where
 
@@ -31,9 +34,11 @@ checkDefinitions environment (currentDef: rest) =
 checkDefinition :: Environment -> Def -> Err Environment
 checkDefinition environment definition = 
   case definition of 
-    DFun tp id arguments statements -> fail "Not yet implemented"-- add function definition to environment
+    DFun t id arguments statements -> fail "Not yet implemented"-- add function definition to environment
+    -- TODO: extend environment for each argument 
+    -- TODO: check statements in the resulting environment
 
-
+-- Checks a list of statements 
 checkStatements :: Environment -> [Stm] -> Err ()
 checkStatements environment [] = return ()
 checkStatements environment (currentStm:rest) = 
@@ -44,7 +49,7 @@ checkStatement  :: Environment -> Stm -> Err Environment
 checkStatement environment statement  = 
   case statement of
       SExp exp                -> fail "Not yet implemented"
-      SDecls t ids            -> fail "Not yet implemented" -- add to env
+      SDecls t ids            -> addVariables environment ids t -- add variables to environment
       SInit t id exp          -> fail "Not yet implemented"
       SReturn exp             -> fail "Not yet implemented"
       SReturnVoid             -> fail "Not yet implemented"
@@ -54,11 +59,11 @@ checkStatement environment statement  =
 
 
 checkExpression :: Environment -> Exp -> Type -> Err ()
-checkExpression environment expression tp = 
+checkExpression environment expression t = 
   do  
     newType <- inferExpression environment expression
-    if newType /= tp
-      then fail (printTree expression ++ " has type " ++ printTree newType ++ " expected " ++ printTree tp)
+    if newType /= t
+      then fail (printTree expression ++ " has type " ++ printTree newType ++ " expected " ++ printTree t)
       else return ()
 
 -- Ensures two expressions are of equal type
@@ -110,7 +115,7 @@ inferExpression environment expression =
     EAnd e1 e2          -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     EOr e1 e2           -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     EAss e1 e2          -> ensureEqualTypes environment e1 e2
-    ETyped expression tp -> fail "Not yet implemented"
+    ETyped expression t -> fail "Not yet implemented"
 
 
 
@@ -128,10 +133,18 @@ type Environment = [[(Id, Type)]] -- List of list of ids+types
 emptyEnvironment :: Environment
 emptyEnvironment = [[]]
 
+
+addVariables :: Environment -> [Id] -> Type -> Err Environment
+addVariables environment [] _ = Ok environment
+addVariables environment (currentId:rest) t = 
+  case addVariable environment currentId t of
+    Ok  newEnvironment -> addVariables newEnvironment rest t
+
+
 addVariable :: Environment -> Id -> Type -> Err Environment
-addVariable (scope:rest) id tp = 
+addVariable (scope:rest) id t = 
     case lookup id scope of
-      Nothing -> return (((id, tp):scope):rest)
+      Nothing -> return (((id, t):scope):rest)
       Just _  -> fail ("Variable " ++ printTree id ++ " already declared.")
 
 lookupIdentifier :: Environment -> Id -> Err Type
@@ -139,7 +152,7 @@ lookupIdentifier [] id = fail $ "Unknown identifier " ++ printTree id ++ "."
 lookupIdentifier (scope:rest) id = 
   case lookup id scope of
     Nothing  -> lookupIdentifier rest id
-    Just tp  -> return tp
+    Just t  -> return t
 
 addScope :: Environment -> Environment
 addScope env = []:env -- Push new scope

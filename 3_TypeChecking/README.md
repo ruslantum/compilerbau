@@ -11,4 +11,4 @@ Textual description available at http://www1.digitalgrammars.com/ipl-book/assign
 
 * `cd src/`
 * `make` 
-* execute `./tccpp <file to typecheck`
+* execute `./tccpp <file to typecheck>`

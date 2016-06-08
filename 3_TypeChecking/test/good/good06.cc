@@ -8,4 +8,6 @@ void main() {
 	c = a / b;
 	c = a++;
 	c = b--;
+	
+	c <= a;
 }

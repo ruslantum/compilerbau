@@ -22,11 +22,11 @@ type Result = Err String
 -- Entry point to typecheck a program
 typecheck   :: Program -> Err ()
 typecheck (PDefs definitions) = 
+  do
   -- Step 1: Add all function definitions to the environment
-  case addDefinitions emptyEnvironment definitions of 
-      Ok environmentWithDefinitions -> 
+    environMentWithDefinitions <- addDefinitions emptyEnvironment definitions
   -- Step 2: Check the definitions
-        checkDefinitions environmentWithDefinitions definitions
+    checkDefinitions environMentWithDefinitions definitions
 
 
 -- Adds a list of function definitions to the environment

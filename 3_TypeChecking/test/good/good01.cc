@@ -3,4 +3,7 @@ void main() {
 	bool b;
 	double d;
 	string s;
+
+	int x;
+	x = i;
 }

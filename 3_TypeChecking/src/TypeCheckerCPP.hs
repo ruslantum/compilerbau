@@ -69,7 +69,10 @@ checkStatements environment (statement:rest) =
 checkStatement  :: Environment -> Stm -> Err Environment
 checkStatement environment statement  = 
   case statement of
-      SExp exp                -> fail "Not yet implemented"
+      SExp exp                -> 
+        case inferExpression environment exp of
+          Ok _ ->  Ok environment
+
       SDecls t ids            -> 
         do 
           addIdentifiers environment ids (VariableType t) -- add variables to environment
@@ -132,7 +135,10 @@ inferExpression environment expression =
     EInt _              -> return Type_int
     EDouble _           -> return Type_double
     EString _           -> return Type_string
-    EId id              -> fail "Not yet implemented"
+    EId id              -> 
+      case lookupIdentifier environment id of
+          Ok (VariableType t)   -> return t
+          Ok (FunctionType _ returnType)  -> return returnType
     EApp id expressions -> fail "Not yet implemented"
     EPIncr expression   -> inferExpression environment expression
     EPDecr expression   -> inferExpression environment expression

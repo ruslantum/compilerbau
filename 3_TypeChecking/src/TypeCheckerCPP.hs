@@ -69,9 +69,11 @@ checkStatements environment (statement:rest) =
 checkStatement  :: Environment -> Stm -> Err Environment
 checkStatement environment statement  = 
   case statement of
-      SExp exp                -> 
+      SExp exp                ->
         case inferExpression environment exp of
-          Ok _ ->  Ok environment
+          Ok _ -> Ok environment
+          Bad e -> Bad e
+      
 
       SDecls t ids            -> 
         do 
@@ -85,12 +87,25 @@ checkStatement environment statement  =
           else return newEnv
       SReturn exp             -> fail "Not yet implemented"
       SReturnVoid             -> fail "Not yet implemented"
-      SWhile exp stm          -> fail "Not yet implemented"
+      SWhile exp stm          -> 
+        do 
+          if inferExpression environment exp /= Ok Type_bool 
+            then fail ("While condition has to be of type bool.")
+            else checkStatement environment stm
       SBlock stms             -> 
         do 
           checkStatements (addScope environment) stms
           return environment
-      SIfElse exp stm1 stm2   -> fail "Not yet implemented"
+      SIfElse exp stm1 stm2   -> 
+        do
+          if inferExpression environment exp /= Ok Type_bool
+            then fail ("If condition has to be of type bool.")
+            else 
+              do
+                checkStatement environment stm1
+                checkStatement environment stm2
+
+
 
 
 checkExpression :: Environment -> Exp -> Type -> Err ()
@@ -177,11 +192,12 @@ emptyEnvironment :: Environment
 emptyEnvironment = [[]]
 
 
-
+-- Adds a function definition to the current environment
 addFunctionDefinitionToEnvironment :: Environment -> Def -> Err Environment
 addFunctionDefinitionToEnvironment environment (DFun returnType identifier arguments _) = 
     addIdentifier environment identifier (FunctionType (map (\(ADecl argType _) -> argType) arguments) returnType)
 
+-- Adds the arguments of a function to the current environment
 addArgumentsToEnvironment :: Environment -> [Arg] -> Err Environment
 addArgumentsToEnvironment environment [] = Ok environment
 addArgumentsToEnvironment environment ((ADecl t id):rest) =
@@ -189,13 +205,14 @@ addArgumentsToEnvironment environment ((ADecl t id):rest) =
     newEnvironment <- addIdentifier environment id (VariableType t)
     addArgumentsToEnvironment newEnvironment rest
 
+-- Adds multiple identifiers to the current environment
 addIdentifiers :: Environment -> [Id] -> EnvironmentEntryType -> Err Environment
 addIdentifiers environment [] _ = Ok environment
 addIdentifiers environment (currentId:rest) t = 
   case addIdentifier environment currentId t of
     Ok  newEnvironment -> addIdentifiers newEnvironment rest t
 
-
+-- Adds an identifier to the current environment
 addIdentifier :: Environment -> Id -> EnvironmentEntryType -> Err Environment
 addIdentifier (scope:rest) id t = 
     case lookup id scope of
@@ -204,6 +221,7 @@ addIdentifier (scope:rest) id t =
         VariableType _  -> fail ("Variable " ++ printTree id ++ " already declared.")
         FunctionType _ _  -> fail ("Function " ++ printTree id ++ " already declared.")
 
+-- Looks up an identifier in the environment
 lookupIdentifier :: Environment -> Id -> Err EnvironmentEntryType
 lookupIdentifier [] id = fail $ "Unknown identifier " ++ printTree id ++ "."
 lookupIdentifier (scope:rest) id = 
@@ -211,6 +229,7 @@ lookupIdentifier (scope:rest) id =
     Nothing  -> lookupIdentifier rest id
     Just t  -> return t
 
+-- Adds a new scope to the current environment
 addScope :: Environment -> Environment
 addScope env = []:env -- Push new scope
 

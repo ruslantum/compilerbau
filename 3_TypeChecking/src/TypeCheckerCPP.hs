@@ -47,7 +47,7 @@ checkDefinitions :: Environment -> [Def] -> Err ()
 checkDefinitions environment [] = return ()
 checkDefinitions environment (currentDef: rest) =
   do 
-    trace("Checking definition" ++ show currentDef) (checkDefinition environment currentDef)
+    trace("Checking definition " ++ show currentDef) (checkDefinition environment currentDef)
     checkDefinitions environment rest
 
 checkDefinition :: Environment -> Def -> Err ()
@@ -73,8 +73,13 @@ checkStatement environment statement  =
       SDecls t ids            -> 
         do 
           addIdentifiers environment ids (VariableType t) -- add variables to environment
-          return environment
-      SInit t id exp          -> fail "Not yet implemented"
+      SInit t id exp          -> 
+        do
+          newEnv <- addIdentifier environment id (VariableType t)
+          t2 <- inferExpression newEnv exp
+          if t /= t2
+            then fail ("Cannot init variable " ++ printTree id ++ " of type " ++ printTree t ++ " with " ++ printTree exp)
+          else return newEnv
       SReturn exp             -> fail "Not yet implemented"
       SReturnVoid             -> fail "Not yet implemented"
       SWhile exp stm          -> fail "Not yet implemented"
@@ -93,16 +98,20 @@ checkExpression environment expression t =
       then fail (printTree expression ++ " has type " ++ printTree newType ++ " expected " ++ printTree t)
       else return ()
 
+
+
+
 -- Ensures two expressions are of equal type
 -- Results in an expression of the type of the first expression
-ensureEqualTypes :: Environment -> Exp -> Exp -> Err Type 
-ensureEqualTypes environment e1 e2 = 
+ensureExpressionsHaveEqualTypes :: Environment -> Exp -> Exp -> Err Type 
+ensureExpressionsHaveEqualTypes environment e1 e2 = 
   do
     e1Type <- inferExpression environment e1 
     e2Type <- inferExpression environment e2 
     if e1Type == e2Type 
       then return e1Type
       else failOperandTypesNotEqual e1 e1Type e2 e2Type
+
 
 -- Ensures two expressions are of equal type
 -- Results in an expression of type finalType
@@ -129,10 +138,10 @@ inferExpression environment expression =
     EPDecr expression   -> inferExpression environment expression
     EIncr expression    -> inferExpression environment expression
     EDecr expression    -> inferExpression environment expression
-    ETimes e1 e2        -> ensureEqualTypes environment e1 e2
-    EDiv e1 e2          -> ensureEqualTypes environment e1 e2
-    EPlus e1 e2         -> ensureEqualTypes environment e1 e2
-    EMinus e1 e2        -> ensureEqualTypes environment e1 e2
+    ETimes e1 e2        -> ensureExpressionsHaveEqualTypes environment e1 e2
+    EDiv e1 e2          -> ensureExpressionsHaveEqualTypes environment e1 e2
+    EPlus e1 e2         -> ensureExpressionsHaveEqualTypes environment e1 e2
+    EMinus e1 e2        -> ensureExpressionsHaveEqualTypes environment e1 e2
     ELt e1 e2           -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     EGt e1 e2           -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     ELtEq e1 e2         -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
@@ -141,7 +150,7 @@ inferExpression environment expression =
     ENEq e1 e2          -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     EAnd e1 e2          -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     EOr e1 e2           -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
-    EAss e1 e2          -> ensureEqualTypes environment e1 e2
+    EAss e1 e2          -> ensureExpressionsHaveEqualTypes environment e1 e2
     ETyped expression t -> fail "Not yet implemented"
 
 

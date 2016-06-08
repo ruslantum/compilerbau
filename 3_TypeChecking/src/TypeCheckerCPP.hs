@@ -6,8 +6,6 @@
 -- *   - Ruslan Tumarkin
 -- *   - Benno Lauther
 -- *
--- * TODO: Extend Environment by function definitions à la "Id [Type] Type" in first run
--- * TODO: Typecheck each function in the resulting Environment
 
 module TypeCheckerCPP where
 

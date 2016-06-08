@@ -167,10 +167,12 @@ inferExpression environment expression =
       case lookupIdentifier environment id of
           Ok (VariableType t)   -> return t
           Ok (FunctionType _ returnType)  -> return returnType
+          Bad _ -> fail ("Variable " ++ printTree id ++ " is not defined in the scope.")
     EApp id expressions ->
       case lookupIdentifier environment id of
           Ok (VariableType t)   -> return t
           Ok (FunctionType _ returnType)  -> return returnType
+          Bad _ -> fail ("Variable " ++ printTree id ++ " is not defined in the scope.")
     EPIncr expression   -> inferExpression environment expression
     EPDecr expression   -> inferExpression environment expression
     EIncr expression    -> inferExpression environment expression
@@ -188,7 +190,7 @@ inferExpression environment expression =
     EAnd e1 e2          -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     EOr e1 e2           -> ensureEqualTypesReturnResultType environment e1 e2 Type_bool
     EAss e1 e2          -> ensureExpressionsHaveEqualTypes environment e1 e2
-    ETyped expression t -> fail "Not yet implemented"
+    ETyped expression t -> return t
 
 
 

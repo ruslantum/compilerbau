@@ -11,7 +11,7 @@
 
 module TypeCheckerCPP where
 
-
+import Debug.Trace
 import PrintCPP
 import AbsCPP
 import ErrM
@@ -21,40 +21,67 @@ type Result = Err String
 
 -- Entry point to typecheck a program
 typecheck   :: Program -> Err ()
-typecheck (PDefs definitions) = checkDefinitions emptyEnvironment definitions
+typecheck (PDefs definitions) = 
+  -- Step 1: Add all function definitions to the environment
+  case addDefinitions emptyEnvironment definitions of 
+      Ok environmentWithDefinitions -> 
+  -- Step 2: Check the definitions
+        checkDefinitions environmentWithDefinitions definitions
 
 
-checkDefinitions :: Environment -> [Def] -> Err()
-checkDefinitions environment [] = return ()
-checkDefinitions environment (currentDef: rest) = 
+-- Adds a list of function definitions to the environment
+addDefinitions :: Environment -> [Def] -> Err Environment
+addDefinitions environment [] = Ok environment
+addDefinitions environment (currentDef: rest) = 
   do 
-    newEnvironment <- checkDefinition environment currentDef
-    checkDefinitions newEnvironment rest
+    newEnvironment <- addDefinition environment currentDef
+    addDefinitions newEnvironment rest
 
-checkDefinition :: Environment -> Def -> Err Environment
-checkDefinition environment definition = 
-  case definition of 
-    DFun t id arguments statements -> fail "Not yet implemented"-- add function definition to environment
-    -- TODO: extend environment for each argument 
-    -- TODO: check statements in the resulting environment
+-- Adds a single function definition to the environment
+addDefinition :: Environment -> Def -> Err Environment
+addDefinition environment definition = addFunctionDefinitionToEnvironment environment definition
+
+
+-- Checks a list of functions definitions 
+checkDefinitions :: Environment -> [Def] -> Err ()
+checkDefinitions environment [] = return ()
+checkDefinitions environment (currentDef: rest) =
+  do 
+    trace("Checking definition" ++ show currentDef) (checkDefinition environment currentDef)
+    checkDefinitions environment rest
+
+checkDefinition :: Environment -> Def -> Err ()
+checkDefinition environment (DFun returnType id arguments statements) = 
+  do
+    -- Add extend new scope by arguments
+    newEnvironment <- addArgumentsToEnvironment (addScope environment) arguments
+    -- Check the statements in the environment
+    checkStatements newEnvironment statements
 
 -- Checks a list of statements 
 checkStatements :: Environment -> [Stm] -> Err ()
 checkStatements environment [] = return ()
-checkStatements environment (currentStm:rest) = 
-  do  newEnvironment <- checkStatement environment currentStm
-      checkStatements newEnvironment rest
+checkStatements environment (statement:rest) = 
+  do  
+    newEnvironment <-  trace("Checking statement " ++ show statement) (checkStatement environment statement)
+    checkStatements newEnvironment rest
 
 checkStatement  :: Environment -> Stm -> Err Environment
 checkStatement environment statement  = 
   case statement of
       SExp exp                -> fail "Not yet implemented"
-      SDecls t ids            -> addVariables environment ids t -- add variables to environment
+      SDecls t ids            -> 
+        do 
+          addIdentifiers environment ids (VariableType t) -- add variables to environment
+          return environment
       SInit t id exp          -> fail "Not yet implemented"
       SReturn exp             -> fail "Not yet implemented"
       SReturnVoid             -> fail "Not yet implemented"
       SWhile exp stm          -> fail "Not yet implemented"
-      SBlock stms             -> fail "Not yet implemented"
+      SBlock stms             -> 
+        do 
+          checkStatements (addScope environment) stms
+          return environment
       SIfElse exp stm1 stm2   -> fail "Not yet implemented"
 
 
@@ -126,28 +153,43 @@ failOperandTypesNotEqual e1 t1 e2 t2 =
 failure :: Show a => a -> Result
 failure x = Bad $ "Undefined case: " ++ show x
 
-data FunctionType 
-  = Type_function Id [Type] Type
+data EnvironmentEntryType 
+  = VariableType Type 
+  | FunctionType [Type] Type
 
-type Environment = [[(Id, Type)]] -- List of list of ids+types
+type Environment = [[(Id, EnvironmentEntryType)]] -- List of list of ids+types
 emptyEnvironment :: Environment
 emptyEnvironment = [[]]
 
 
-addVariables :: Environment -> [Id] -> Type -> Err Environment
-addVariables environment [] _ = Ok environment
-addVariables environment (currentId:rest) t = 
-  case addVariable environment currentId t of
-    Ok  newEnvironment -> addVariables newEnvironment rest t
+
+addFunctionDefinitionToEnvironment :: Environment -> Def -> Err Environment
+addFunctionDefinitionToEnvironment environment (DFun returnType identifier arguments _) = 
+    addIdentifier environment identifier (FunctionType (map (\(ADecl argType _) -> argType) arguments) returnType)
+
+addArgumentsToEnvironment :: Environment -> [Arg] -> Err Environment
+addArgumentsToEnvironment environment [] = Ok environment
+addArgumentsToEnvironment environment ((ADecl t id):rest) =
+  do 
+    newEnvironment <- addIdentifier environment id (VariableType t)
+    addArgumentsToEnvironment newEnvironment rest
+
+addIdentifiers :: Environment -> [Id] -> EnvironmentEntryType -> Err Environment
+addIdentifiers environment [] _ = Ok environment
+addIdentifiers environment (currentId:rest) t = 
+  case addIdentifier environment currentId t of
+    Ok  newEnvironment -> addIdentifiers newEnvironment rest t
 
 
-addVariable :: Environment -> Id -> Type -> Err Environment
-addVariable (scope:rest) id t = 
+addIdentifier :: Environment -> Id -> EnvironmentEntryType -> Err Environment
+addIdentifier (scope:rest) id t = 
     case lookup id scope of
       Nothing -> return (((id, t):scope):rest)
-      Just _  -> fail ("Variable " ++ printTree id ++ " already declared.")
+      Just t  -> case t of
+        VariableType _  -> fail ("Variable " ++ printTree id ++ " already declared.")
+        FunctionType _ _  -> fail ("Function " ++ printTree id ++ " already declared.")
 
-lookupIdentifier :: Environment -> Id -> Err Type
+lookupIdentifier :: Environment -> Id -> Err EnvironmentEntryType
 lookupIdentifier [] id = fail $ "Unknown identifier " ++ printTree id ++ "."
 lookupIdentifier (scope:rest) id = 
   case lookup id scope of

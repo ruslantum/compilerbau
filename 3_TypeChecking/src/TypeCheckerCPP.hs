@@ -100,21 +100,27 @@ checkStatement environment statement  =
           else return environment
       SWhile exp stm          ->
         do
-          if inferExpression environment exp /= Ok Type_bool
-            then fail ("While condition has to be of type bool.")
-            else checkStatement environment stm
+          case inferExpression environment exp of
+            Ok t ->
+              if t /= Type_bool
+                then fail ("While condition has to be of type bool. Found type " ++ printTree t)
+                else checkStatement environment stm
+            Bad e -> Bad e
       SBlock stms             ->
         do
           checkStatements environment stms
           return environment
       SIfElse exp stm1 stm2   ->
         do
-          if inferExpression environment exp /= Ok Type_bool
-            then fail ("If condition has to be of type bool.")
-            else
-              do
-                checkStatement environment stm1
-                checkStatement environment stm2
+          case inferExpression environment exp of
+            Ok t ->
+              if t /= Type_bool
+                then fail ("If condition has to be of type bool. Found type " ++ printTree t)
+                else 
+                  do 
+                    checkStatement environment stm1
+                    checkStatement environment stm2
+            Bad e -> Bad e
 
 
 

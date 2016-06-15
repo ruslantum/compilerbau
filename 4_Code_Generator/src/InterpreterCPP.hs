@@ -74,9 +74,25 @@ typeToASTType t =
     Type_void   -> void
     Type_string -> string
 
+
 codegenTop :: Def -> LLVM() 
 codegenTop (DFun returnType id arguments statements) = 
   do 
+    define returnTypeAST id argumentsAST blocks 
+    where 
+      -- Convert arguments to (AST.Type, AST.Name) pairs
+      argumentsAST = argsToSig arguments
+      -- Add new blocks
+      blocks = createBlocks $ execCodegen $ do
+        entry <- addBlock entryBlockName
+        setBlock entry
+        cgen exp >>= ret
+        -- Add function arguments as local variables
+        forM argumentsAST $ \(astType, astName) -> do
+          var <- alloca astType
+          store var (local (astName))
+          assign astName var 
+        cgen statements >>= ret
 
 
 codegenTop :: S.Expr -> LLVM ()

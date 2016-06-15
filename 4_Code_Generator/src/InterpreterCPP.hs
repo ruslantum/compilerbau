@@ -47,7 +47,7 @@ void :: Type
 void    = VoidType
 
 string :: Type
-string :: PointerType (IntegerType 8)
+string  = PointerType (IntegerType 8)
 
 
 ---------------------------------------------------------------------------------

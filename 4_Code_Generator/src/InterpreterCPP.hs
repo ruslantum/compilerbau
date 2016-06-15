@@ -29,9 +29,51 @@ import ParCPP
 import PrintCPP
 import ErrM
 
+---------------------------------------------------------------------------------
+-- Types
+-------------------------------------------------------------------------------
 
+bool :: Type 
+bool = IntegerType 1
+
+-- IEEE 754 double
+double :: Type
+double  = FloatingPointType 64 IEEE
+
+int :: Type
+int     = IntegerType 32
+
+void :: Type
+void    = VoidType
+
+-- TODO: String implementation
+-- string :: Type
+-- string :: ArrayType [...] 
+
+
+---------------------------------------------------------------------------------
+-- Emit
+-------------------------------------------------------------------------------
+
+{- Old implementation - Just for reference
 toSig :: [String] -> [(AST.Type, AST.Name)]
 toSig = map (\x -> (double, AST.Name x))
+-}
+
+argsToSig :: [Arg] -> [(AST.Type, AST.Name)]
+argsToSig = map (\x -> argToSig x)
+
+argToSig :: Arg -> (AST.Type, AST.Name) 
+argToSig (ADecl t id) = (typeToASTType t, AST.Name id)
+
+typeToASTType :: Type -> AST.Type
+typeToASTType t = 
+  case t of 
+    Type_bool   -> bool
+    Type_int    -> int
+    Type_double -> double 
+    Type_void   -> void
+    Type_string -> fail "Not yet implemented: Type_string"
 
 codegenTop :: S.Expr -> LLVM ()
 codegenTop (S.Function name args body) = do
@@ -150,13 +192,6 @@ external retty label argtys = addDefn $
   , basicBlocks = []
   }
 
----------------------------------------------------------------------------------
--- Types
--------------------------------------------------------------------------------
-
--- IEEE 754 double
-double :: Type
-double = FloatingPointType 64 IEEE
 
 -------------------------------------------------------------------------------
 -- Names

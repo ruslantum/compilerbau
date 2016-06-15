@@ -25,7 +25,7 @@ checkFile modo s = case pProgram (myLexer s) of
                           Bad err -> do putStrLn "TYPE ERROR"
                                         putStrLn err
                                         exitFailure
-                          Ok _              -> do ast <- codegen modo ex
+                          Ok _              -> do ast <- codegen modo tree
                                                   return $ Just ast
 
 main :: IO ()

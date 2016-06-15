@@ -13,6 +13,7 @@ import qualified LLVM.General.AST as AST
 
 import qualified LLVM.General.AST.Constant as C
 import qualified LLVM.General.AST.Attribute as A
+import qualified LLVM.General.AST.Float as F
 import qualified LLVM.General.AST.CallingConvention as CC
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
 
@@ -137,6 +138,58 @@ binops = Map.fromList [
     , ("/", fdiv)
     , ("<", lt)
   ]
+
+
+cgen :: Stm -> Codegen AST.Operand 
+cgen (ETrue)        = return $ cons $ C.Int 1, 1
+cgen (EFalse)       = return $ cons $ C.Int 1, 1
+cgen (EInt i)       = return $ cons $ C.Int 32, i
+cgen (EDouble d)    = return $ cons $ C.Float (F.Double n)
+cgen (EId id)       = return getvar x >>= load
+{- TODO: Implement function call
+cgen (EApp id args) = 
+  do
+    largs <- mapM cgen args
+    call (externf (AST.Name fn)) largs)
+-}
+{- TODO: Implement
+cgen (EPIncr e)   = 
+cgen (EPDecr e)   = 
+cgen (EIncr e)   = 
+cgen (EDecr e)   = 
+-} 
+cgen (ETimes e1 e2)  = 
+  do
+    ce1 <- cgen e1  
+    ce2 <- cgen e2
+    fmul ce1 ce2
+cgen (EDiv e1 e2)  = 
+  do
+    ce1 <- cgen e1  
+    ce2 <- cgen e2
+    fdiv ce1 ce2
+cgen (EPlus e1 e2)  = 
+  do
+    ce1 <- cgen e1  
+    ce2 <- cgen e2
+    fadd ce1 ce2
+cgen (EMinus e1 e2)  = 
+  do
+    ce1 <- cgen e1  
+    ce2 <- cgen e2
+    fsub ce1 ce2
+{- TODO: Implement
+cgen (ELt e1 e2) = 
+cgen (EGt e1 e2) = 
+cgen (ELtEq e1 e2) = 
+cgen (EGtEq e1 e2) = 
+cgen (EEq e1 e2) = 
+cgen (ENEq e1 e2) = 
+cgen (EAnd e1 e2) = 
+cgen (EOr e1 e2) = 
+cgen (EAss e1 e2) = 
+-}
+
 
 cgen :: S.Expr -> Codegen AST.Operand
 cgen (S.UnaryOp op a) = do

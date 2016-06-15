@@ -46,9 +46,8 @@ int     = IntegerType 32
 void :: Type
 void    = VoidType
 
--- TODO: String implementation
--- string :: Type
--- string :: ArrayType [...] 
+string :: Type
+string :: PointerType (IntegerType 8)
 
 
 ---------------------------------------------------------------------------------
@@ -73,7 +72,12 @@ typeToASTType t =
     Type_int    -> int
     Type_double -> double 
     Type_void   -> void
-    Type_string -> fail "Not yet implemented: Type_string"
+    Type_string -> string
+
+codegenTop :: Def -> LLVM() 
+codegenTop (DFun returnType id arguments statements) = 
+  do 
+
 
 codegenTop :: S.Expr -> LLVM ()
 codegenTop (S.Function name args body) = do

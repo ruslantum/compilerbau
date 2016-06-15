@@ -12,8 +12,12 @@ import TypeCheckerCPP
 import InterpreterCPP
 import ErrM
 
-checkFile :: String -> IO ()
-checkFile s = case pProgram (myLexer s) of
+import Control.Monad.Trans
+
+import qualified LLVM.General.AST as AST
+
+checkFile :: AST.Module -> String -> IO ()
+checkFile modo s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
                            exitFailure
@@ -21,7 +25,8 @@ checkFile s = case pProgram (myLexer s) of
                           Bad err -> do putStrLn "TYPE ERROR"
                                         putStrLn err
                                         exitFailure
-                          Ok _    -> interpret tree
+                          Ok _              -> do ast <- codegen modo ex
+                                                  return $ Just ast
 
 main :: IO ()
 main = do args <- getArgs

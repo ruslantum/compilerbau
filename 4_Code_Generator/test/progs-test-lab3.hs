@@ -14,6 +14,7 @@ import System.Exit
 import System.IO
 import System.Process
 import System.IO.Unsafe
+import System.IO.Error
 
 {-# NOINLINE doDebug #-}
 doDebug :: IORef Bool
@@ -28,7 +29,7 @@ listGoodProgs = listCCFiles "good"
 
 listBadProgs = listCCFiles "bad"
 
-listCCFiles dir = 
+listCCFiles dir =
     liftM (map (\f -> joinPath [dir,f]) . sort . filter ((=="cc") . getExt)) $ getDirectoryContents dir
 
 
@@ -41,7 +42,7 @@ runMake dir = do checkDirectoryExists dir
                  runCommandNoFail_ ("make -C " ++ quote dir) ""
 
 runTests :: FilePath -> IO ([Bool],[Bool])
-runTests dir = 
+runTests dir =
     do let prog = joinPath [dir,"lab3"]
        checkFileExists prog
        goodProgs <- listGoodProgs
@@ -59,7 +60,7 @@ testBackendProg prog f =
        putStrLn $ "Running " ++ f ++ "..."
        (out,err,s) <- runCommandStrWait c input
        debug $ "Exit code: " ++ show s
-       if out == output 
+       if out == output
          then return True
          else do reportError c "invalid output" f input out err
 		 putStrLn "Expected output:"
@@ -71,7 +72,7 @@ testBackendProg prog f =
 --
 
 parseArgs :: [String] -> IO String
-parseArgs ["-debug",cfFile] = 
+parseArgs ["-debug",cfFile] =
     do writeIORef doDebug True
        return cfFile
 parseArgs [cfFile] = return cfFile
@@ -79,7 +80,7 @@ parseArgs _ = do hPutStrLn stderr "Usage: progs-test-lab3 <interpreter code dire
                  exitFailure
 
 mainOpts :: FilePath -> IO ()
-mainOpts dir = 
+mainOpts dir =
     do welcome
        runMake dir
        (good,bad) <- runTests dir
@@ -128,7 +129,7 @@ pathSep = '/'
 
 quote :: FilePath -> FilePath
 quote p = "'" ++ concatMap f p ++ "'"
-  where 
+  where
     f '\'' = "\\'"
     f c = [c]
 
@@ -174,7 +175,7 @@ blue = 4
 runCommandStr :: String -- ^ command
 	      -> String -- ^ stdin data
 	      -> IO (String,String,ProcessHandle) -- ^ stdout, stderr, process
-runCommandStr c inStr = 
+runCommandStr c inStr =
     do
     outVar <- newEmptyMVar
     errVar <- newEmptyMVar
@@ -216,7 +217,7 @@ runCommandNoFail_ c f = runCommandNoFail c f >> return ()
 runCommandNoFail :: String -- ^ Command
                  -> FilePath -- ^ Input file
                  -> IO (String,String) -- ^ stdout and stderr
-runCommandNoFail e f = 
+runCommandNoFail e f =
     do
     let c = e ++ " " ++ f
     hPutStrLn stderr $ "Running " ++ c ++ "..."
@@ -244,13 +245,13 @@ checkDirectoryExists f =
 		         exitFailure
 
 readFileIfExists :: FilePath -> IO String
-readFileIfExists f = catch (readFile f) (\_ -> return "")
+readFileIfExists f = catchIOError (readFile f) (\_ -> return "")
 
 --
 -- * Error reporting and output checking
 --
 
-reportErrorColor :: Color 
+reportErrorColor :: Color
                  -> String -- ^ command that failed
 	         -> String -- ^ how it failed
 	         -> FilePath -- ^ source file
@@ -283,18 +284,18 @@ reportError = reportErrorColor red
 
 prFile :: FilePath -> IO ()
 prFile f = do
-           e <- doesFileExist f           
+           e <- doesFileExist f
            when e $ do putStrLn $ "For input file " ++ f ++ ":"
-	               putStrLn $ "---------------- begin " ++ f ++ " ------------------" 
+	               putStrLn $ "---------------- begin " ++ f ++ " ------------------"
 	               s <- readFile f
 	               putStrLn $ color green s
-	               putStrLn $ "----------------- end " ++ f ++ " -------------------" 
+	               putStrLn $ "----------------- end " ++ f ++ " -------------------"
 
 
 -- | Report how many tests passed.
 report :: String -> [Bool] -> IO ()
-report n rs = 
+report n rs =
   do let (p,t) = (length (filter id rs), length rs)
          c = if p == t then green else red
-     putStrLn $ color c $ 
+     putStrLn $ color c $
               n ++ "passed " ++ show p ++ " of " ++ show t ++ " tests"

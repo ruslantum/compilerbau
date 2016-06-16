@@ -7,10 +7,12 @@ import Data.List
 import Data.Function
 import qualified Data.Map as Map
 
+import LLVM.General.Context
+import LLVM.General.Module
 import LLVM.General.AST
 import LLVM.General.AST.Global
-import qualified LLVM.General.AST as AST
 
+import qualified LLVM.General.AST as AST
 import qualified LLVM.General.AST.Constant as C
 import qualified LLVM.General.AST.Attribute as A
 import qualified LLVM.General.AST.Float as F
@@ -19,6 +21,7 @@ import qualified LLVM.General.AST.FloatingPointPredicate as FP
 
 import Control.Monad
 import Control.Monad.State
+import Control.Monad.Except
 import Control.Applicative
 
 import System.Environment (getArgs)
@@ -34,20 +37,20 @@ import ErrM
 -- Types
 -------------------------------------------------------------------------------
 
-bool :: Type 
+bool :: AST.Type
 bool = IntegerType 1
 
 -- IEEE 754 double
-double :: Type
+double :: AST.Type
 double  = FloatingPointType 64 IEEE
 
-int :: Type
+int :: AST.Type
 int     = IntegerType 32
 
-void :: Type
+void :: AST.Type
 void    = VoidType
 
-string :: Type
+string :: AST.Type
 string  = PointerType (IntegerType 8)
 
 
@@ -63,24 +66,25 @@ toSig = map (\x -> (double, AST.Name x))
 argsToSig :: [Arg] -> [(AST.Type, AST.Name)]
 argsToSig = map (\x -> argToSig x)
 
-argToSig :: Arg -> (AST.Type, AST.Name) 
+argToSig :: Arg -> (AST.Type, AST.Name)
 argToSig (ADecl t id) = (typeToASTType t, AST.Name id)
 
-typeToASTType :: Type -> AST.Type
-typeToASTType t = 
-  case t of 
+typeToASTType :: AbsCPP.Type -> AST.Type
+typeToASTType t =
+  case t of
     Type_bool   -> bool
     Type_int    -> int
-    Type_double -> double 
-    Type_void   -> void
+    Type_double -> double
+    Type_void   -> InterpreterCPP.void
     Type_string -> string
 
 
-codegenTop :: Def -> LLVM() 
-codegenTop (DFun returnType id arguments statements) = 
-  do 
-    define returnTypeAST id argumentsAST blocks 
-    where 
+codegenTop :: Def -> LLVM()
+codegenTop (DFun returnType id arguments statements) =
+  do
+    define returnTypeAST id argumentsAST blocks
+    where
+      returnTypeAST = typeToASTType returnType
       -- Convert arguments to (AST.Type, AST.Name) pairs
       argumentsAST = argsToSig arguments
       -- Add new blocks
@@ -92,11 +96,11 @@ codegenTop (DFun returnType id arguments statements) =
         forM argumentsAST $ \(astType, astName) -> do
           var <- alloca astType
           store var (local (astName))
-          assign astName var 
+          assign astName var
         cgen statements >>= ret
 
 
-codegenTop :: S.Expr -> LLVM ()
+{-codegenTop :: S.Expr -> LLVM ()
 codegenTop (S.Function name args body) = do
   define double name fnargs bls
   where
@@ -121,7 +125,7 @@ codegenTop exp = do
       entry <- addBlock entryBlockName
       setBlock entry
       cgen exp >>= ret
-
+-}
 -------------------------------------------------------------------------------
 -- Operations
 -------------------------------------------------------------------------------
@@ -131,67 +135,67 @@ lt a b = do
   test <- fcmp FP.ULT a b
   uitofp double test
 
-binops = Map.fromList [
+{-binops = Map.fromList [
       ("+", fadd)
     , ("-", fsub)
     , ("*", fmul)
     , ("/", fdiv)
     , ("<", lt)
   ]
+-}
 
-
-cgen :: Stm -> Codegen AST.Operand 
-cgen (ETrue)        = return $ cons $ C.Int 1, 1
-cgen (EFalse)       = return $ cons $ C.Int 1, 1
-cgen (EInt i)       = return $ cons $ C.Int 32, i
-cgen (EDouble d)    = return $ cons $ C.Float (F.Double n)
-cgen (EId id)       = return getvar x >>= load
+cgen :: Stm -> Codegen AST.Operand
+cgen (ETrue)        = return $ cons $ C.Int 1 1
+cgen (EFalse)       = return $ cons $ C.Int 1 1
+cgen (EInt i)       = return $ cons $ C.Int 32 i
+cgen (EDouble d)    = return $ cons $ C.Float (F.Double d)
+cgen (EId id)       = return getvar id >>= load
 {- TODO: Implement function call
-cgen (EApp id args) = 
+cgen (EApp id args) =
   do
     largs <- mapM cgen args
     call (externf (AST.Name fn)) largs)
 -}
 {- TODO: Implement
-cgen (EPIncr e)   = 
-cgen (EPDecr e)   = 
-cgen (EIncr e)   = 
-cgen (EDecr e)   = 
--} 
-cgen (ETimes e1 e2)  = 
+cgen (EPIncr e)   =
+cgen (EPDecr e)   =
+cgen (EIncr e)   =
+cgen (EDecr e)   =
+-}
+cgen (ETimes e1 e2)  =
   do
-    ce1 <- cgen e1  
+    ce1 <- cgen e1
     ce2 <- cgen e2
     fmul ce1 ce2
-cgen (EDiv e1 e2)  = 
+cgen (EDiv e1 e2)  =
   do
-    ce1 <- cgen e1  
+    ce1 <- cgen e1
     ce2 <- cgen e2
     fdiv ce1 ce2
-cgen (EPlus e1 e2)  = 
+cgen (EPlus e1 e2)  =
   do
-    ce1 <- cgen e1  
+    ce1 <- cgen e1
     ce2 <- cgen e2
     fadd ce1 ce2
-cgen (EMinus e1 e2)  = 
+cgen (EMinus e1 e2)  =
   do
-    ce1 <- cgen e1  
+    ce1 <- cgen e1
     ce2 <- cgen e2
     fsub ce1 ce2
 {- TODO: Implement
-cgen (ELt e1 e2) = 
-cgen (EGt e1 e2) = 
-cgen (ELtEq e1 e2) = 
-cgen (EGtEq e1 e2) = 
-cgen (EEq e1 e2) = 
-cgen (ENEq e1 e2) = 
-cgen (EAnd e1 e2) = 
-cgen (EOr e1 e2) = 
-cgen (EAss e1 e2) = 
+cgen (ELt e1 e2) =
+cgen (EGt e1 e2) =
+cgen (ELtEq e1 e2) =
+cgen (EGtEq e1 e2) =
+cgen (EEq e1 e2) =
+cgen (ENEq e1 e2) =
+cgen (EAnd e1 e2) =
+cgen (EOr e1 e2) =
+cgen (EAss e1 e2) =
 -}
 
 
-cgen :: S.Expr -> Codegen AST.Operand
+{-cgen :: S.Expr -> Codegen AST.Operand
 cgen (S.UnaryOp op a) = do
   cgen $ S.Call ("unary" ++ op) [a]
 cgen (S.BinaryOp "=" (S.Var var) val) = do
@@ -211,7 +215,7 @@ cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
 cgen (S.Call fn args) = do
   largs <- mapM cgen args
   call (externf (AST.Name fn)) largs
-
+-}
 -------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------
@@ -219,8 +223,8 @@ cgen (S.Call fn args) = do
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
-codegen :: AST.Module -> [S.Expr] -> IO AST.Module
-codegen mod fns = withContext $ \context ->
+codegen :: AST.Module -> Program -> IO AST.Module
+codegen mod (PDefs fns) = withContext $ \context ->
   liftError $ withModuleFromAST context newast $ \m -> do
     llstr <- moduleLLVMAssembly m
     putStrLn llstr
@@ -247,7 +251,7 @@ addDefn d = do
   defs <- gets moduleDefinitions
   modify $ \s -> s { moduleDefinitions = defs ++ [d] }
 
-define ::  Type -> String -> [(Type, Name)] -> [BasicBlock] -> LLVM ()
+define ::  AST.Type -> String -> [(AST.Type, Name)] -> [BasicBlock] -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
     name        = Name label
@@ -256,7 +260,7 @@ define retty label argtys body = addDefn $
   , basicBlocks = body
   }
 
-external ::  Type -> String -> [(Type, Name)] -> LLVM ()
+external ::  AST.Type -> String -> [(AST.Type, Name)] -> LLVM ()
 external retty label argtys = addDefn $
   GlobalDefinition $ functionDefaults {
     name        = Name label
@@ -446,7 +450,7 @@ fcmp cond a b = instr $ FCmp cond a b []
 cons :: C.Constant -> Operand
 cons = ConstantOperand
 
-uitofp :: Type -> Operand -> Codegen Operand
+uitofp :: AST.Type -> Operand -> Codegen Operand
 uitofp ty a = instr $ UIToFP a ty []
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
@@ -456,7 +460,7 @@ toArgs = map (\x -> (x, []))
 call :: Operand -> [Operand] -> Codegen Operand
 call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
 
-alloca :: Type -> Codegen Operand
+alloca :: AST.Type -> Codegen Operand
 alloca ty = instr $ Alloca ty Nothing 0 []
 
 store :: Operand -> Operand -> Codegen Operand

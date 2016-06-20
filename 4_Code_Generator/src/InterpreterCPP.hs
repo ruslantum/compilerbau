@@ -1,3 +1,5 @@
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module InterpreterCPP where
 
 
@@ -50,8 +52,8 @@ int     = IntegerType 32
 void :: AST.Type
 void    = VoidType
 
-string :: AST.Type
-string  = PointerType (IntegerType 8)
+{-string :: AST.Type
+string  = PointerType (IntegerType 8)-}
 
 
 ---------------------------------------------------------------------------------
@@ -67,7 +69,7 @@ argsToSig :: [Arg] -> [(AST.Type, AST.Name)]
 argsToSig = map (\x -> argToSig x)
 
 argToSig :: Arg -> (AST.Type, AST.Name)
-argToSig (ADecl t id) = (typeToASTType t, AST.Name id)
+argToSig (ADecl t (Id id)) = (typeToASTType t, AST.Name id)
 
 typeToASTType :: AbsCPP.Type -> AST.Type
 typeToASTType t =
@@ -76,7 +78,7 @@ typeToASTType t =
     Type_int    -> int
     Type_double -> double
     Type_void   -> InterpreterCPP.void
-    Type_string -> string
+    {-Type_string -> string-}
 
 
 codegenTop :: Def -> LLVM()
@@ -182,8 +184,12 @@ cgen (EMinus e1 e2)  =
     ce1 <- cgen e1
     ce2 <- cgen e2
     fsub ce1 ce2
-{- TODO: Implement
 cgen (ELt e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    fcmp ce1 ce2
+{- TODO: Implement
 cgen (EGt e1 e2) =
 cgen (ELtEq e1 e2) =
 cgen (EGtEq e1 e2) =
@@ -251,7 +257,7 @@ addDefn d = do
   defs <- gets moduleDefinitions
   modify $ \s -> s { moduleDefinitions = defs ++ [d] }
 
-define ::  AST.Type -> String -> [(AST.Type, Name)] -> [BasicBlock] -> LLVM ()
+define ::  AST.Type -> Id -> [(AST.Type, Name)] -> [BasicBlock] -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
     name        = Name label

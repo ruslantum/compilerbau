@@ -52,18 +52,9 @@ int     = IntegerType 32
 void :: AST.Type
 void    = VoidType
 
-{-string :: AST.Type
-string  = PointerType (IntegerType 8)-}
-
-
 ---------------------------------------------------------------------------------
 -- Emit
 -------------------------------------------------------------------------------
-
-{- Old implementation - Just for reference
-toSig :: [String] -> [(AST.Type, AST.Name)]
-toSig = map (\x -> (double, AST.Name x))
--}
 
 argsToSig :: [Arg] -> [(AST.Type, AST.Name)]
 argsToSig = map (\x -> argToSig x)
@@ -78,8 +69,6 @@ typeToASTType t =
     Type_int    -> int
     Type_double -> double
     Type_void   -> InterpreterCPP.void
-    {-Type_string -> string-}
-
 
 codegenTop :: Def -> LLVM()
 codegenTop (DFun returnType id arguments statements) =
@@ -99,7 +88,9 @@ codegenTop (DFun returnType id arguments statements) =
           var <- alloca astType
           store var (local (astName))
           assign astName var
-        cgen statements >>= ret
+        forM statements $ \(statement) -> do
+          cgen statement >>= ret
+
 
 
 {-codegenTop :: S.Expr -> LLVM ()
@@ -137,14 +128,38 @@ lt a b = do
   test <- fcmp FP.ULT a b
   uitofp double test
 
-{-binops = Map.fromList [
-      ("+", fadd)
-    , ("-", fsub)
-    , ("*", fmul)
-    , ("/", fdiv)
-    , ("<", lt)
-  ]
--}
+gt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+gt a b = do
+  test <- fcmp FP.UGT a b
+  uitofp double test
+
+lteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+lteq a b = do
+  test <- fcmp FP.ULE a b
+  uitofp double test
+
+gteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+gteq a b = do
+  test <- fcmp FP.UGE a b
+  uitofp double test
+
+eq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eq a b = do
+  test <- fcmp FP.UEQ a b
+  uitofp double test
+
+neq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+neq a b = do
+  test <- fcmp FP.UNE a b
+  uitofp double test
+
+eand :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eand a b = do
+  uitofp double a
+
+eor :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eor a b = do
+  uitofp double a
 
 cgen :: Stm -> Codegen AST.Operand
 cgen (ETrue)        = return $ cons $ C.Int 1 1
@@ -188,40 +203,49 @@ cgen (ELt e1 e2) =
   do
     ce1 <- cgen e1
     ce2 <- cgen e2
-    fcmp ce1 ce2
-{- TODO: Implement
+    lt ce1 ce2
 cgen (EGt e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    gt ce1 ce2
 cgen (ELtEq e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    lteq ce1 ce2
 cgen (EGtEq e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    gteq ce1 ce2
 cgen (EEq e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    eq ce1 ce2
 cgen (ENEq e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    neq ce1 ce2
 cgen (EAnd e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    eand ce1 ce2
 cgen (EOr e1 e2) =
+  do
+    ce1 <- cgen e1
+    ce2 <- cgen e2
+    eand ce1 ce2
 cgen (EAss e1 e2) =
--}
+  do
+    a <- getvar e1
+    cval <- cgen e2
+    store a cval
+    return cval
 
-
-{-cgen :: S.Expr -> Codegen AST.Operand
-cgen (S.UnaryOp op a) = do
-  cgen $ S.Call ("unary" ++ op) [a]
-cgen (S.BinaryOp "=" (S.Var var) val) = do
-  a <- getvar var
-  cval <- cgen val
-  store a cval
-  return cval
-cgen (S.BinaryOp op a b) = do
-  case Map.lookup op binops of
-    Just f  -> do
-      ca <- cgen a
-      cb <- cgen b
-      f ca cb
-    Nothing -> error "No such operator"
-cgen (S.Var x) = getvar x >>= load
-cgen (S.Float n) = return $ cons $ C.Float (F.Double n)
-cgen (S.Call fn args) = do
-  largs <- mapM cgen args
-  call (externf (AST.Name fn)) largs
--}
 -------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------

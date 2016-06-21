@@ -1,9 +1,9 @@
 .PHONY: all bnfc tccpp
 
-all: bnfc icpp
+all: bnfc ccpp
 
-icpp:
-	ghc --make icpp.hs -o icpp
+ccpp:
+	ghc --make ccpp.hs -o ccpp
 
 bnfc:
 	bnfc ../CPP.cf

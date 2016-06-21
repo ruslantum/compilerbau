@@ -32,5 +32,5 @@ main :: IO ()
 main = do args <- getArgs
           case args of
             [file] -> readFile file >>= checkFile
-            _      -> do putStrLn "Usage: icpp <target file>"
+            _      -> do putStrLn "Usage: ccpp <target file>"
                          exitFailure

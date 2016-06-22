@@ -163,12 +163,16 @@ eor a b = do
 
 
 
+cgenBlock :: [Stm] -> Codegen [AST.Operand] 
+cgenBlock statements = map (\stm -> cgen stm)
 
 cgen :: Stm -> Codegen AST.Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
 
 cgen (SExp e) = cgenExp e
+
+cgen (SBlock statements) = cgenBlock statements
 
 cgen (SIfElse condition trueStatements falseStatements) = 
   do 

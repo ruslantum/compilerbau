@@ -195,6 +195,30 @@ cgen (SIfElse condition trueStatements falseStatements) =
     setBlock continueBlock
 
 
+cgen (SWhile condition statements) = 
+  do 
+    testBlock     <- addBlock "while.test"
+    loopBlock     <- addBlock "while.loop"
+    continueBlock <- addBlock "while.continue"
+
+    -- Test condition
+    br testBlock
+
+    -- Generate code for test block
+    -- Test condition, start/continue loop on true, else continue
+    setBlock testBlock
+    conditionCode <- cgen condition
+    test          <- icmp IP.NE (C.Int 1 0) conditionCode -- True if condition != 0
+    cbr test loopBlock continueBlock
+
+    -- Generate code for loop block
+    setBlock loopBlock
+    cgen statements   -- Execute statements
+    br testBlock      -- Then test for next loop
+
+    -- Continue code generation in continueBlock
+    setBlock continueBlock
+
 
 {- EXPRESSION-LEVEL CODE GENERATION -}
 cgenExp :: Exp -> Codegen AST.Operand

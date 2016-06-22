@@ -86,8 +86,8 @@ codegenTop (DFun returnType id arguments statements) =
         -- Add function arguments as local variables
         forM argumentsAST $ \(astType, astName) -> do
           case astName of -- an arguments is always named
-            Name strName -> 
-              do 
+            Name strName ->
+              do
                 var <- alloca astType
                 store var (local (astName))
                 assign strName var
@@ -234,7 +234,7 @@ cgenExp (ETrue)        = return $ cons $ C.Int 1 1
 cgenExp (EFalse)       = return $ cons $ C.Int 1 1
 cgenExp (EInt i)       = return $ cons $ C.Int 32 i
 cgenExp (EDouble d)    = return $ cons $ C.Float (F.Double d)
-cgenExp (EId id)       = getvar id >>= load
+cgenExp (EId id)       = getvar (idToStr id) >>= load
 {- TODO: Implement function call
 cgen (EApp id args) =
   do
@@ -349,10 +349,13 @@ addDefn d = do
   defs <- gets moduleDefinitions
   modify $ \s -> s { moduleDefinitions = defs ++ [d] }
 
+idToStr :: Id -> String
+idToStr (Id str) = str
+
 define ::  AST.Type -> Id -> [(AST.Type, Name)] -> [BasicBlock] -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name (Id label)
+    name        = Name (idToStr label)
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = body
@@ -510,7 +513,7 @@ assign var x = do
   lcls <- gets symtab
   modify $ \s -> s { symtab = [(var, x)] ++ lcls }
 
-getvar :: Id -> Codegen Operand
+getvar :: String -> Codegen Operand
 getvar var = do
   syms <- gets symtab
   case lookup var syms of

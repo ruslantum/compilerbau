@@ -20,6 +20,7 @@ import qualified LLVM.General.AST.Attribute as A
 import qualified LLVM.General.AST.Float as F
 import qualified LLVM.General.AST.CallingConvention as CC
 import qualified LLVM.General.AST.FloatingPointPredicate as FP
+import qualified LLVM.General.AST.IntegerPredicate as IP
 
 import Control.Monad
 import Control.Monad.State
@@ -161,7 +162,40 @@ eor :: AST.Operand -> AST.Operand -> Codegen AST.Operand
 eor a b = do
   uitofp double a
 
+
+
+
 cgen :: Stm -> Codegen AST.Operand
+
+{- STATEMENT-LEVEL CODE GENERATION -}
+cgen (SIfElse condition trueStatements falseStatements) = 
+  do 
+    thenBlock <- addBlock "if.then"
+    elseBlock <- addBlock "if.else"
+    continueBlock <- addBlock "if.exit"
+
+    -- Generate conditional jump
+    conditionCode   <- cgen condition    
+    test            <- icmp IP.NE (C.Int 1 0) conditionCode -- True if condition != 0
+    cbr test thenBlock elseBlock                            -- Do the branching
+
+    -- then block
+    setBlock thenBlock
+    cgen trueStatements
+    br continueBlock
+
+    -- else block
+    setBlock elseBlock
+    cgen falseStatements
+    br continueBlock
+
+    -- Continue code generation in continueBlock
+    setBlock continueBlock
+
+
+
+{- EXPRESSION-LEVEL CODE GENERATION -}
+
 cgen (ETrue)        = return $ cons $ C.Int 1 1
 cgen (EFalse)       = return $ cons $ C.Int 1 1
 cgen (EInt i)       = return $ cons $ C.Int 32 i
@@ -462,6 +496,7 @@ externf :: Name -> Operand
 externf = ConstantOperand . C.GlobalReference double
 
 -- Arithmetic and Constants
+
 fadd :: Operand -> Operand -> Codegen Operand
 fadd a b = instr $ FAdd NoFastMathFlags a b []
 

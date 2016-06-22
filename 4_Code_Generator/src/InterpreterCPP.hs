@@ -83,7 +83,6 @@ codegenTop (DFun returnType id arguments statements) =
       blocks = createBlocks $ execCodegen $ do
         entry <- addBlock entryBlockName
         setBlock entry
-        cgen exp >>= ret
         -- Add function arguments as local variables
         forM argumentsAST $ \(astType, astName) -> do
           var <- alloca astType
@@ -168,14 +167,14 @@ eor a b = do
 cgen :: Stm -> Codegen AST.Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
-cgen (SIfElse condition trueStatements falseStatements) = 
-  do 
+cgen (SIfElse condition trueStatements falseStatements) =
+  do
     thenBlock <- addBlock "if.then"
     elseBlock <- addBlock "if.else"
     continueBlock <- addBlock "if.exit"
 
     -- Generate conditional jump
-    conditionCode   <- cgen condition    
+    conditionCode   <- cgen condition
     test            <- icmp IP.NE (C.Int 1 0) conditionCode -- True if condition != 0
     cbr test thenBlock elseBlock                            -- Do the branching
 
@@ -195,12 +194,12 @@ cgen (SIfElse condition trueStatements falseStatements) =
 
 
 {- EXPRESSION-LEVEL CODE GENERATION -}
-
-cgen (ETrue)        = return $ cons $ C.Int 1 1
-cgen (EFalse)       = return $ cons $ C.Int 1 1
-cgen (EInt i)       = return $ cons $ C.Int 32 i
-cgen (EDouble d)    = return $ cons $ C.Float (F.Double d)
-cgen (EId id)       = return getvar id >>= load
+cgenExp :: Exp -> Codegen AST.Operand
+cgenExp (ETrue)        = return $ cons $ C.Int 1 1
+cgenExp (EFalse)       = return $ cons $ C.Int 1 1
+cgenExp (EInt i)       = return $ cons $ C.Int 32 i
+cgenExp (EDouble d)    = return $ cons $ C.Float (F.Double d)
+cgenExp (EId id)       = return getvar id >>= load
 {- TODO: Implement function call
 cgen (EApp id args) =
   do
@@ -208,75 +207,75 @@ cgen (EApp id args) =
     call (externf (AST.Name fn)) largs)
 -}
 {- TODO: Implement
-cgen (EPIncr e)   =
-cgen (EPDecr e)   =
-cgen (EIncr e)   =
-cgen (EDecr e)   =
+cgenExp (EPIncr e)   =
+cgenExp (EPDecr e)   =
+cgenExp (EIncr e)   =
+cgenExp (EDecr e)   =
 -}
-cgen (ETimes e1 e2)  =
+cgenExp (ETimes e1 e2)  =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     fmul ce1 ce2
-cgen (EDiv e1 e2)  =
+cgenExp (EDiv e1 e2)  =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     fdiv ce1 ce2
-cgen (EPlus e1 e2)  =
+cgenExp (EPlus e1 e2)  =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     fadd ce1 ce2
-cgen (EMinus e1 e2)  =
+cgenExp (EMinus e1 e2)  =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     fsub ce1 ce2
-cgen (ELt e1 e2) =
+cgenExp (ELt e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     lt ce1 ce2
-cgen (EGt e1 e2) =
+cgenExp (EGt e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     gt ce1 ce2
-cgen (ELtEq e1 e2) =
+cgenExp (ELtEq e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     lteq ce1 ce2
-cgen (EGtEq e1 e2) =
+cgenExp (EGtEq e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     gteq ce1 ce2
-cgen (EEq e1 e2) =
+cgenExp (EEq e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     eq ce1 ce2
-cgen (ENEq e1 e2) =
+cgenExp (ENEq e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     neq ce1 ce2
-cgen (EAnd e1 e2) =
+cgenExp (EAnd e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     eand ce1 ce2
-cgen (EOr e1 e2) =
+cgenExp (EOr e1 e2) =
   do
-    ce1 <- cgen e1
-    ce2 <- cgen e2
+    ce1 <- cgenExp e1
+    ce2 <- cgenExp e2
     eand ce1 ce2
-cgen (EAss e1 e2) =
+cgenExp (EAss e1 e2) =
   do
     a <- getvar e1
-    cval <- cgen e2
+    cval <- cgenExp e2
     store a cval
     return cval
 
@@ -512,8 +511,8 @@ fdiv a b = instr $ FDiv NoFastMathFlags a b []
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr $ FCmp cond a b []
 
-icmp :: IP.IntegerPredicate -> AST.Operand -> AST.Operand -> Codegen AST.Operand 
-icmp cond a b = instr $ ICmp cond a b [] 
+icmp :: IP.IntegerPredicate -> AST.Operand -> AST.Operand -> Codegen AST.Operand
+icmp cond a b = instr $ ICmp cond a b []
 
 cons :: C.Constant -> Operand
 cons = ConstantOperand

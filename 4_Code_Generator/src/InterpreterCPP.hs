@@ -53,6 +53,9 @@ int     = IntegerType 32
 void :: AST.Type
 void    = VoidType
 
+iOne = cons $ C.Int 1 1
+iZero = cons $ C.Int 1 0
+
 ---------------------------------------------------------------------------------
 -- Emit
 -------------------------------------------------------------------------------
@@ -186,7 +189,7 @@ cgen (SIfElse condition trueStatements falseStatements) =
 
     -- Generate conditional jump
     conditionCode   <- cgenExp condition
-    test            <- icmp IP.NE (ConstantOperand (C.Int 1 0)) conditionCode -- True if condition != 0
+    test            <- icmp IP.NE iZero conditionCode -- True if condition != 0
     cbr test thenBlock elseBlock                            -- Do the branching
 
     -- then block
@@ -201,7 +204,7 @@ cgen (SIfElse condition trueStatements falseStatements) =
 
     -- Continue code generation in continueBlock
     setBlock continueBlock
-
+    return iZero
 
 cgen (SWhile condition statements) =
   do
@@ -216,7 +219,7 @@ cgen (SWhile condition statements) =
     -- Test condition, start/continue loop on true, else continue
     setBlock testBlock
     conditionCode <- cgenExp condition
-    test          <- icmp IP.NE (ConstantOperand (C.Int 1 0)) conditionCode -- True if condition != 0
+    test          <- icmp IP.NE iZero conditionCode -- True if condition != 0
     cbr test loopBlock continueBlock
 
     -- Generate code for loop block
@@ -226,6 +229,7 @@ cgen (SWhile condition statements) =
 
     -- Continue code generation in continueBlock
     setBlock continueBlock
+    return iZero
 
 
 {- EXPRESSION-LEVEL CODE GENERATION -}

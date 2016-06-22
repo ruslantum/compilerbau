@@ -477,6 +477,9 @@ fdiv a b = instr $ FDiv NoFastMathFlags a b []
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr $ FCmp cond a b []
 
+icmp :: IP.IntegerPredicate -> AST.Operand -> AST.Operand -> Codegen AST.Operand 
+icmp cond a b = instr $ ICmp cond a b [] 
+
 cons :: C.Constant -> Operand
 cons = ConstantOperand
 

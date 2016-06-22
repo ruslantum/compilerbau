@@ -211,8 +211,8 @@ cgen (SWhile condition statements) =
     -- Generate code for test block
     -- Test condition, start/continue loop on true, else continue
     setBlock testBlock
-    conditionCode <- cgen condition
-    test          <- icmp IP.NE (C.Int 1 0) conditionCode -- True if condition != 0
+    conditionCode <- cgenExp condition
+    test          <- icmp IP.NE (ConstantOperand (C.Int 1 0)) conditionCode -- True if condition != 0
     cbr test loopBlock continueBlock
 
     -- Generate code for loop block
@@ -230,7 +230,7 @@ cgenExp (ETrue)        = return $ cons $ C.Int 1 1
 cgenExp (EFalse)       = return $ cons $ C.Int 1 1
 cgenExp (EInt i)       = return $ cons $ C.Int 32 i
 cgenExp (EDouble d)    = return $ cons $ C.Float (F.Double d)
-cgenExp (EId id)       = return getvar id >>= load
+cgenExp (EId id)       = getvar id >>= load
 {- TODO: Implement function call
 cgen (EApp id args) =
   do
@@ -305,7 +305,7 @@ cgenExp (EOr e1 e2) =
     eand ce1 ce2
 cgenExp (EAss e1 e2) =
   do
-    a <- getvar e1
+    a <- cgenExp e1
     cval <- cgenExp e2
     store a cval
     return cval
@@ -348,7 +348,7 @@ addDefn d = do
 define ::  AST.Type -> Id -> [(AST.Type, Name)] -> [BasicBlock] -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name label
+    name        = Name (Id label)
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = body
@@ -506,7 +506,7 @@ assign var x = do
   lcls <- gets symtab
   modify $ \s -> s { symtab = [(var, x)] ++ lcls }
 
-getvar :: String -> Codegen Operand
+getvar :: Id -> Codegen Operand
 getvar var = do
   syms <- gets symtab
   case lookup var syms of

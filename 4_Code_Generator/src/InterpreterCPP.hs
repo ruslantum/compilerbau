@@ -85,9 +85,13 @@ codegenTop (DFun returnType id arguments statements) =
         setBlock entry
         -- Add function arguments as local variables
         forM argumentsAST $ \(astType, astName) -> do
-          var <- alloca astType
-          store var (local (astName))
-          assign astName var
+          case astName of -- an arguments is always named
+            Name strName -> 
+              do 
+                var <- alloca astType
+                store var (local (astName))
+                assign strName var
+
         forM statements $ \(statement) -> do
           cgen statement >>= ret
 

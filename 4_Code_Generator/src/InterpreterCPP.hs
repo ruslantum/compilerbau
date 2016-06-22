@@ -163,8 +163,8 @@ eor a b = do
 
 
 
-cgenBlock :: [Stm] -> Codegen [AST.Operand] 
-cgenBlock statements = map (\stm -> cgen stm)
+cgenBlock :: [Stm] -> Codegen AST.Operand
+cgenBlock statements = last (map (\stm -> cgen stm) statements)
 
 cgen :: Stm -> Codegen AST.Operand
 
@@ -174,15 +174,15 @@ cgen (SExp e) = cgenExp e
 
 cgen (SBlock statements) = cgenBlock statements
 
-cgen (SIfElse condition trueStatements falseStatements) = 
-  do 
+cgen (SIfElse condition trueStatements falseStatements) =
+  do
     thenBlock <- addBlock "if.then"
     elseBlock <- addBlock "if.else"
     continueBlock <- addBlock "if.exit"
 
     -- Generate conditional jump
-    conditionCode   <- cgen condition
-    test            <- icmp IP.NE (C.Int 1 0) conditionCode -- True if condition != 0
+    conditionCode   <- cgenExp condition
+    test            <- icmp IP.NE (ConstantOperand (C.Int 1 0)) conditionCode -- True if condition != 0
     cbr test thenBlock elseBlock                            -- Do the branching
 
     -- then block
@@ -199,8 +199,8 @@ cgen (SIfElse condition trueStatements falseStatements) =
     setBlock continueBlock
 
 
-cgen (SWhile condition statements) = 
-  do 
+cgen (SWhile condition statements) =
+  do
     testBlock     <- addBlock "while.test"
     loopBlock     <- addBlock "while.loop"
     continueBlock <- addBlock "while.continue"

@@ -16,8 +16,11 @@ import Control.Monad.Trans
 
 import qualified LLVM.General.AST as AST
 
-checkFile :: AST.Module -> String -> IO ()
-checkFile modo s = case pProgram (myLexer s) of
+initModule :: AST.Module
+initModule = emptyModule "my cool jit"
+
+check :: AST.Module -> String -> IO (Maybe AST.Module)
+check modo s = case pProgram (myLexer s) of
             Bad err  -> do putStrLn "SYNTAX ERROR"
                            putStrLn err
                            exitFailure
@@ -28,9 +31,13 @@ checkFile modo s = case pProgram (myLexer s) of
                           Ok _              -> do ast <- codegen modo tree
                                                   return $ Just ast
 
+processFile :: String -> IO (Maybe AST.Module)
+processFile fname = readFile fname >>= check initModule
+
+
 main :: IO ()
 main = do args <- getArgs
           case args of
-            [file] -> readFile file >>= checkFile
+            [file] -> processFile file >> return ()
             _      -> do putStrLn "Usage: ccpp <target file>"
                          exitFailure

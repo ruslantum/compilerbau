@@ -168,6 +168,9 @@ eor a b = do
 cgen :: Stm -> Codegen AST.Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
+
+cgen (SExp e) -> cgenExp e
+
 cgen (SIfElse condition trueStatements falseStatements) = 
   do 
     thenBlock <- addBlock "if.then"

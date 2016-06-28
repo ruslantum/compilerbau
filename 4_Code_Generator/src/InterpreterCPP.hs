@@ -543,14 +543,26 @@ externf = ConstantOperand . C.GlobalReference double
 fadd :: Operand -> Operand -> Codegen Operand
 fadd a b = instr $ FAdd NoFastMathFlags a b []
 
+iadd :: Operand -> Operand -> Codegen Operand
+iadd a b = instr $ Add False False a b []
+
 fsub :: Operand -> Operand -> Codegen Operand
 fsub a b = instr $ FSub NoFastMathFlags a b []
+
+isub :: Operand -> Operand -> Codegen Operand 
+isub a b = instr $ Sub False False a b []
 
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr $ FMul NoFastMathFlags a b []
 
+imul :: Operand -> Operand -> Codegen Operand 
+imul a b = instr $ Mul False False a b []
+
 fdiv :: Operand -> Operand -> Codegen Operand
 fdiv a b = instr $ FDiv NoFastMathFlags a b []
+
+idiv :: Operand -> Operand -> Codegen Operand 
+idiv a b = instr $ SDiv True a b []
 
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr $ FCmp cond a b []

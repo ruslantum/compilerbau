@@ -74,29 +74,39 @@ typeToASTType t =
     Type_double -> double
     Type_void   -> InterpreterCPP.void
 
+typeOfOperand :: Operand -> AST.Type 
+typeOfOperand op = 
+  case op of 
+    LocalReference t _ -> t
+    ConstantOperand c -> 
+      case c of 
+        C.Int _ _   -> int 
+        C.Float _   -> double
+
+
 codegenTop :: Def -> LLVM()
 codegenTop (DFun returnType id arguments statements) =
-  do
-    trace("codegenTop: defining function" ++ show id) (define returnTypeAST id argumentsAST blocks)
+  trace ("# Generating module for function" ++ show id) $ do
+    define returnTypeAST id argumentsAST blocks
     where
       returnTypeAST = typeToASTType returnType
       -- Convert arguments to (AST.Type, AST.Name) pairs
       argumentsAST = argsToSig arguments
       -- Add new blocks
-      blocks = createBlocks $ execCodegen $ do
+      blocks = createBlocks $ execCodegen $ trace ("Creating blocks") $ do
         entry <- addBlock entryBlockName
         setBlock entry
         -- Add function arguments as local variables
-        forM argumentsAST $ \(astType, astName) -> do
+        forM argumentsAST $ \(astType, astName) -> trace ("Creating local variable for argument " ++ show id) $ do
           case astName of -- an arguments is always named
             Name strName ->
               do
                 var <- alloca astType
-                store var (local (astName))
+                store var $ local astName astType
                 assign strName var
 
-        forM statements $ \(statement) -> do
-          trace ("cgen: " ++ show statement) (cgen statement)
+        forM statements $ \(statement) -> trace ("Creating llvm code for statement " ++ show statement) $ do
+          cgen statement
 
 
 
@@ -178,13 +188,15 @@ cgen :: Stm -> Codegen AST.Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
 
-cgen (SInit t (Id id) e) = 
-  do 
-    var <- trace ("Creating local variable named " ++ show id) (alloca (typeToASTType t))
-    store var (local (AST.Name id))
-    assign id var
+cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " ++ show id) $ do  
+  var <- alloca astType
+  store var $ local astName astType
+  assign id var
 
-    return var
+  return var
+  where 
+    astType = typeToASTType t
+    astName = AST.Name id
 
 cgen (SReturn e) = 
   do
@@ -280,11 +292,9 @@ cgenExp (EPlus e1 e2)  =
   do
     ce1 <- cgenExp e1
     ce2 <- cgenExp e2
-    case ce1 of
-      ConstantOperand c ->
-        case c of
-          C.Int _ _   -> iadd ce1 ce2
-          C.Float _   -> fadd ce1 ce2
+    case typeOfOperand ce1 of
+      IntegerType _ -> iadd ce1 ce2
+      FloatingPointType _ _ -> fadd ce1 ce2
 
 cgenExp (EMinus e1 e2)  =
   do
@@ -472,15 +482,15 @@ fresh = do
   modify $ \s -> s { count = 1 + i }
   return $ i + 1
 
-instr :: Instruction -> Codegen (Operand)
-instr ins = do
+instr :: Instruction -> AST.Type -> Codegen (Operand)
+instr ins t = trace ("Adding instruction " ++ show ins ++ " of type " ++ show t) $ do
   n <- fresh
   let ref = (UnName n)
   blk <- current
   let i = stack blk
-  trace ("added instruction: " ++ show ins ++ " to block " ++ show blk) (modifyBlock (blk { stack = i ++ [ref := ins] } ))
+  modifyBlock (blk { stack = i ++ [ref := ins] } )
 
-  return $ local ref
+  return $ local ref t
 
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
@@ -548,68 +558,62 @@ getvar var = do
 -------------------------------------------------------------------------------
 
 -- References
-local ::  Name -> Operand
-local = LocalReference double
-
-global ::  Name -> C.Constant
-global = C.GlobalReference double
-
-externf :: Name -> Operand
-externf = ConstantOperand . C.GlobalReference double
+local ::  Name -> AST.Type -> Operand
+local n t = LocalReference t n
 
 -- Arithmetic and Constants
 
 fadd :: Operand -> Operand -> Codegen Operand
-fadd a b = instr $ FAdd NoFastMathFlags a b []
+fadd a b = instr (FAdd NoFastMathFlags a b []) double
 
 iadd :: Operand -> Operand -> Codegen Operand
-iadd a b = instr $ Add False False a b []
+iadd a b = instr (Add False False a b []) int
 
 fsub :: Operand -> Operand -> Codegen Operand
-fsub a b = instr $ FSub NoFastMathFlags a b []
+fsub a b = instr (FSub NoFastMathFlags a b []) double
 
 isub :: Operand -> Operand -> Codegen Operand 
-isub a b = instr $ Sub False False a b []
+isub a b = instr (Sub False False a b []) int
 
 fmul :: Operand -> Operand -> Codegen Operand
-fmul a b = instr $ FMul NoFastMathFlags a b []
+fmul a b = instr (FMul NoFastMathFlags a b []) double
 
 imul :: Operand -> Operand -> Codegen Operand 
-imul a b = instr $ Mul False False a b []
+imul a b = instr (Mul False False a b []) int
 
 fdiv :: Operand -> Operand -> Codegen Operand
-fdiv a b = instr $ FDiv NoFastMathFlags a b []
+fdiv a b = instr (FDiv NoFastMathFlags a b []) double
 
 idiv :: Operand -> Operand -> Codegen Operand 
-idiv a b = instr $ SDiv True a b []
+idiv a b = instr (SDiv True a b []) int
 
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
-fcmp cond a b = instr $ FCmp cond a b []
+fcmp cond a b = instr (FCmp cond a b []) int
 
 icmp :: IP.IntegerPredicate -> AST.Operand -> AST.Operand -> Codegen AST.Operand
-icmp cond a b = instr $ ICmp cond a b []
+icmp cond a b = instr (ICmp cond a b []) int
 
 cons :: C.Constant -> Operand
 cons = ConstantOperand
 
 uitofp :: AST.Type -> Operand -> Codegen Operand
-uitofp ty a = instr $ UIToFP a ty []
+uitofp ty a = instr (UIToFP a ty []) double
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
 
 -- Effects
 call :: Operand -> [Operand] -> Codegen Operand
-call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
+call fn args = instr (Call Nothing CC.C [] (Right fn) (toArgs args) [] []) InterpreterCPP.void -- TODO Get return type
 
 alloca :: AST.Type -> Codegen Operand
-alloca ty = instr $ Alloca ty Nothing 0 []
+alloca ty = instr (Alloca ty Nothing 0 []) ty
 
 store :: Operand -> Operand -> Codegen Operand
-store ptr val = instr $ Store False ptr val Nothing 0 []
+store ptr val = instr (Store False ptr val Nothing 0 []) $ typeOfOperand val
 
 load :: Operand -> Codegen Operand
-load ptr = instr $ Load False ptr Nothing 0 []
+load ptr = instr (Load False ptr Nothing 0 []) $ typeOfOperand ptr
 
 -- Control Flow
 br :: Name -> Codegen (Named Terminator)

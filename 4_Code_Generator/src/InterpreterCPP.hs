@@ -211,7 +211,7 @@ cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " 
   store var res
   assign id var
   return var
-  
+
   where 
     astType = typeToASTType t
     astName = AST.Name id
@@ -511,7 +511,7 @@ instr ins t = trace ("Adding instruction " ++ show ins ++ " of type " ++ show t)
   return $ local ref t
 
 terminator :: Named Terminator -> Codegen (Named Terminator)
-terminator trm = do
+terminator trm = trace ("Adding terminator " ++ show trm) $ do
   blk <- current
   modifyBlock (blk { term = Just trm })
   return trm

@@ -2,7 +2,7 @@
 
 module InterpreterCPP where
 
-
+import Debug.Trace
 import Data.Word
 import Data.String
 import Data.List
@@ -77,7 +77,7 @@ typeToASTType t =
 codegenTop :: Def -> LLVM()
 codegenTop (DFun returnType id arguments statements) =
   do
-    define returnTypeAST id argumentsAST blocks
+    trace("codegenTop: defining function" ++ show id) (define returnTypeAST id argumentsAST blocks)
     where
       returnTypeAST = typeToASTType returnType
       -- Convert arguments to (AST.Type, AST.Name) pairs
@@ -96,7 +96,8 @@ codegenTop (DFun returnType id arguments statements) =
                 assign strName var
 
         forM statements $ \(statement) -> do
-          cgen statement >>= ret
+          trace ("cgen: " ++ show statement) (cgen statement)
+
 
 
 

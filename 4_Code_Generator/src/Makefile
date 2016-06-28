@@ -1,6 +1,6 @@
-.PHONY: all bnfc tccpp
+.PHONY: all bnfc ccpp
 
-all: bnfc ccpp
+all: distclean bnfc ccpp
 
 ccpp:
 	ghc --make ccpp.hs -o ccpp
@@ -11,7 +11,7 @@ bnfc:
 	alex -g LexCPP.x
 
 clean:
-	-rm -f tccpp
+	-rm -f ccpp
 	-rm -f *.log *.aux *.hi *.o *.dvi
 	-rm -f DocCPP.ps
 

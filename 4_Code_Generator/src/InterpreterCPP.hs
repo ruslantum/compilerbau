@@ -178,6 +178,20 @@ cgen :: Stm -> Codegen AST.Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
 
+cgen (SInit t (Id id) e) = 
+  do 
+    var <- trace ("Creating local variable named " ++ show id) (alloca (typeToASTType t))
+    store var (local (AST.Name id))
+    assign id var
+
+    return var
+
+cgen (SReturn e) = 
+  do
+    c <- cgenExp e
+    ret c
+    return c
+
 cgen (SExp e) = cgenExp e
 
 cgen (SBlock statements) = cgenBlock statements
@@ -266,7 +280,12 @@ cgenExp (EPlus e1 e2)  =
   do
     ce1 <- cgenExp e1
     ce2 <- cgenExp e2
-    fadd ce1 ce2
+    case ce1 of
+      ConstantOperand c ->
+        case c of
+          C.Int _ _   -> iadd ce1 ce2
+          C.Float _   -> fadd ce1 ce2
+
 cgenExp (EMinus e1 e2)  =
   do
     ce1 <- cgenExp e1

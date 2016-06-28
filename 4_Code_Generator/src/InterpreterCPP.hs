@@ -458,7 +458,8 @@ instr ins = do
   let ref = (UnName n)
   blk <- current
   let i = stack blk
-  modifyBlock (blk { stack = i ++ [ref := ins] } )
+  trace ("added instruction: " ++ show ins ++ " to block " ++ show blk) (modifyBlock (blk { stack = i ++ [ref := ins] } ))
+
   return $ local ref
 
 terminator :: Named Terminator -> Codegen (Named Terminator)

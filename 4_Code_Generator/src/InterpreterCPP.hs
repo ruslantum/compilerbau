@@ -53,8 +53,17 @@ int     = IntegerType 32
 void :: AST.Type
 void    = VoidType
 
-iOne = cons $ C.Int 1 1
-iZero = cons $ C.Int 1 0
+
+
+constTrue = cons $ C.Int 1 1 
+constFalse = cons $ C.Int 1 0
+
+constIntegerZero = cons $ C.Int 32 0
+
+constDoubleZero = cons $ C.Float (F.Double 0) 
+
+
+
 
 ---------------------------------------------------------------------------------
 -- Emit
@@ -83,6 +92,14 @@ typeOfOperand op =
         C.Int _ _   -> int 
         C.Float _   -> double
 
+defaultValueForType :: AbsCPP.Type -> Operand
+defaultValueForType t = 
+    case t of
+    Type_bool   -> constFalse
+    Type_int    -> constIntegerZero
+    Type_double -> constDoubleZero
+
+
 
 codegenTop :: Def -> LLVM()
 codegenTop (DFun returnType id arguments statements) =
@@ -105,8 +122,7 @@ codegenTop (DFun returnType id arguments statements) =
                 store var $ local astName astType
                 assign strName var
 
-        forM statements $ \(statement) -> trace ("Creating llvm code for statement " ++ show statement) $ do
-          cgen statement
+        forM statements $ \(statement) -> trace ("Creating llvm code for statement " ++ show statement) $ cgen statement
 
 
 
@@ -189,11 +205,13 @@ cgen :: Stm -> Codegen AST.Operand
 {- STATEMENT-LEVEL CODE GENERATION -}
 
 cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " ++ show id) $ do  
-  var <- alloca astType
-  store var $ local astName astType
+  res <- cgenExp e        -- Generate initialization code
+  var <- alloca astType   -- Alloc a local variable
+  -- store var $ defaultValueForType t -- store default initialization value
+  store var res
   assign id var
-
   return var
+  
   where 
     astType = typeToASTType t
     astName = AST.Name id
@@ -216,7 +234,7 @@ cgen (SIfElse condition trueStatements falseStatements) =
 
     -- Generate conditional jump
     conditionCode   <- cgenExp condition
-    test            <- icmp IP.NE iZero conditionCode -- True if condition != 0
+    test            <- icmp IP.NE constFalse conditionCode -- True if condition != 0
     cbr test thenBlock elseBlock                            -- Do the branching
 
     -- then block
@@ -231,7 +249,7 @@ cgen (SIfElse condition trueStatements falseStatements) =
 
     -- Continue code generation in continueBlock
     setBlock continueBlock
-    return iZero
+    return constFalse
 
 cgen (SWhile condition statements) =
   do
@@ -246,7 +264,7 @@ cgen (SWhile condition statements) =
     -- Test condition, start/continue loop on true, else continue
     setBlock testBlock
     conditionCode <- cgenExp condition
-    test          <- icmp IP.NE iZero conditionCode -- True if condition != 0
+    test          <- icmp IP.NE constFalse conditionCode -- True if condition != 0
     cbr test loopBlock continueBlock
 
     -- Generate code for loop block
@@ -256,7 +274,7 @@ cgen (SWhile condition statements) =
 
     -- Continue code generation in continueBlock
     setBlock continueBlock
-    return iZero
+    return constFalse
 
 
 {- EXPRESSION-LEVEL CODE GENERATION -}

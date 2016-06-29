@@ -254,10 +254,34 @@ cgenExp (EApp id args) =
       astName = AST.Name $ idToStr id
       astType = int -- TODO Figure out type of function here
 
-cgenExp (EPIncr e)   = performTypedOperation e (EInt 1) iadd fadd
-cgenExp (EPDecr e)   = performTypedOperation e (EInt 1) isub fsub
-cgenExp (EIncr e)   = performTypedOperation e (EInt 1) iadd fadd
-cgenExp (EDecr e)   = performTypedOperation e (EInt 1) isub fsub
+cgenExp (EPIncr e) =
+  do
+    a <- cgenExp e
+    cval <- performTypedOperation e (EInt 1) iadd fadd
+    store a cval
+    return a
+
+cgenExp (EPDecr e) =
+  do
+    a <- cgenExp e
+    cval <- performTypedOperation e (EInt 1) isub fsub
+    store a cval
+    return a
+
+cgenExp (EIncr e) =
+  do
+    a <- cgenExp e
+    cval <- performTypedOperation e (EInt 1) iadd fadd
+    store a cval
+    return cval
+
+cgenExp (EDecr e) =
+  do
+    a <- cgenExp e
+    cval <- performTypedOperation e (EInt 1) isub fsub
+    store a cval
+    return cval
+
 cgenExp (ETimes e1 e2)  = performTypedOperation e1 e2 imul fmul
 cgenExp (EDiv e1 e2)    = performTypedOperation e1 e2 idiv fdiv
 cgenExp (EPlus e1 e2)   = performTypedOperation e1 e2 iadd fadd
@@ -575,7 +599,7 @@ fadd :: Operand -> Operand -> Codegen Operand
 fadd a b = instr (FAdd NoFastMathFlags a b []) double
 
 iadd :: Operand -> Operand -> Codegen Operand
-iadd a b = instr (Add False False a b []) int
+iadd a b = instr (Add True False a b []) int
 
 fsub :: Operand -> Operand -> Codegen Operand
 fsub a b = instr (FSub NoFastMathFlags a b []) double

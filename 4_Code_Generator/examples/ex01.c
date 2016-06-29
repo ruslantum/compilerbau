@@ -2,3 +2,7 @@ int main () {
 	 int i = 1;
 	 return i;
 }
+
+void voidFun() {
+	return;
+}

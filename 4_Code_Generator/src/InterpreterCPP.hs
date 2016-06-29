@@ -98,6 +98,8 @@ typeOfOperand op =
       case c of 
         C.Int _ _   -> int 
         C.Float _   -> double
+        C.GlobalReference t _ -> t
+
 
 defaultValueForType :: AbsCPP.Type -> Operand
 defaultValueForType t = 
@@ -138,10 +140,10 @@ codegenTop (DFun returnType id arguments statements) =
 
 
 
-cgenBlock :: [Stm] -> Codegen AST.Operand
+cgenBlock :: [Stm] -> Codegen Operand
 cgenBlock statements = last (map (\stm -> cgen stm) statements)
 
-cgen :: Stm -> Codegen AST.Operand
+cgen :: Stm -> Codegen Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
 
@@ -228,7 +230,7 @@ cgen (SWhile condition statements) =
 
 
 {- EXPRESSION-LEVEL CODE GENERATION -}
-performTypedOperation :: Exp -> Exp -> (AST.Operand -> AST.Operand -> Codegen AST.Operand) -> (AST.Operand -> AST.Operand -> Codegen AST.Operand) -> Codegen AST.Operand
+performTypedOperation :: Exp -> Exp -> (Operand -> Operand -> Codegen Operand) -> (Operand -> Operand -> Codegen Operand) -> Codegen Operand
 performTypedOperation e1 e2 integerFunction floatingPointFunction = do 
   op1 <- cgenExp e1 
   op2 <- cgenExp e2
@@ -236,18 +238,22 @@ performTypedOperation e1 e2 integerFunction floatingPointFunction = do
     IntegerType _           -> integerFunction op1 op2 
     FloatingPointType _ _   -> floatingPointFunction op1 op2  
 
-cgenExp :: Exp -> Codegen AST.Operand
+cgenExp :: Exp -> Codegen Operand
 cgenExp (ETrue)        = return $ cons $ C.Int 1 1
 cgenExp (EFalse)       = return $ cons $ C.Int 1 1
 cgenExp (EInt i)       = return $ cons $ C.Int 32 i
 cgenExp (EDouble d)    = return $ cons $ C.Float (F.Double d)
 cgenExp (EId id)       = getvar (idToStr id) >>= load
-{- TODO: Implement function call
-cgen (EApp id args) =
+
+-- Function call
+cgenExp (EApp id args) =
   do
-    largs <- mapM cgen args
-    call (externf (AST.Name fn)) largs)
--}
+    argumentList <- mapM cgenExp args
+    call (externf astName astType) argumentList
+    where 
+      astName = AST.Name $ idToStr id
+      astType = int -- TODO Figure out type of function here
+
 {- TODO: Implement
 cgenExp (EPIncr e)   =
 cgenExp (EPDecr e)   =
@@ -305,6 +311,7 @@ cgenExp (EOr e1 e2) =
     ce1 <- cgenExp e1
     ce2 <- cgenExp e2
     eand ce1 ce2
+
 cgenExp (EAss e1 e2) =
   do
     a <- cgenExp e1
@@ -532,46 +539,49 @@ getvar var = do
 local ::  Name -> AST.Type -> Operand
 local n t = LocalReference t n
 
+externf :: Name -> AST.Type -> Operand
+externf n t = ConstantOperand ( C.GlobalReference t n)
+
 
 -------------------------------------------------------------------------------
 -- Low Level Code Generation for Operations
 -------------------------------------------------------------------------------
 
-lt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+lt :: Operand -> Operand -> Codegen Operand
 lt a b = do
   test <- fcmp FP.ULT a b
   uitofp double test
 
-gt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+gt :: Operand -> Operand -> Codegen Operand
 gt a b = do
   test <- fcmp FP.UGT a b
   uitofp double test
 
-lteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+lteq :: Operand -> Operand -> Codegen Operand
 lteq a b = do
   test <- fcmp FP.ULE a b
   uitofp double test
 
-gteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+gteq :: Operand -> Operand -> Codegen Operand
 gteq a b = do
   test <- fcmp FP.UGE a b
   uitofp double test
 
-eq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eq :: Operand -> Operand -> Codegen Operand
 eq a b = do
   test <- fcmp FP.UEQ a b
   uitofp double test
 
-neq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+neq :: Operand -> Operand -> Codegen Operand
 neq a b = do
   test <- fcmp FP.UNE a b
   uitofp double test
 
-eand :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eand :: Operand -> Operand -> Codegen Operand
 eand a b = do
   uitofp double a
 
-eor :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eor :: Operand -> Operand -> Codegen Operand
 eor a b = do
   uitofp double a
 
@@ -602,7 +612,7 @@ idiv a b = instr (SDiv True a b []) int
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
 fcmp cond a b = instr (FCmp cond a b []) int
 
-icmp :: IP.IntegerPredicate -> AST.Operand -> AST.Operand -> Codegen AST.Operand
+icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
 icmp cond a b = instr (ICmp cond a b []) int
 
 cons :: C.Constant -> Operand
@@ -610,6 +620,7 @@ cons = ConstantOperand
 
 uitofp :: AST.Type -> Operand -> Codegen Operand
 uitofp ty a = instr (UIToFP a ty []) double
+
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
@@ -619,7 +630,7 @@ toArgs = map (\x -> (x, []))
 -------------------------------------------------------------------------------
 
 call :: Operand -> [Operand] -> Codegen Operand
-call fn args = instr (Call Nothing CC.C [] (Right fn) (toArgs args) [] []) InterpreterCPP.void -- TODO Get return type
+call fn args = instr (Call Nothing CC.C [] (Right fn) (toArgs args) [] []) $ typeOfOperand fn -- TODO Get return type
 
 -- Creates variable of provided type
 alloca :: AST.Type -> Codegen Operand

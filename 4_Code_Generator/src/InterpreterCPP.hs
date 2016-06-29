@@ -185,9 +185,8 @@ cgen (SIfElse condition trueStatements falseStatements) =
     continueBlock <- addBlock "if.exit"
 
     -- Generate conditional jump
-    conditionCode   <- cgenExp condition
-    test            <- icmp IP.NE constFalse conditionCode -- True if condition != 0
-    cbr test thenBlock elseBlock                            -- Do the branching
+    conditionTest <- cgenExp condition
+    cbr conditionTest thenBlock elseBlock                            -- Do the branching
 
     -- then block
     setBlock thenBlock
@@ -215,9 +214,8 @@ cgen (SWhile condition statements) =
     -- Generate code for test block
     -- Test condition, start/continue loop on true, else continue
     setBlock testBlock
-    conditionCode <- cgenExp condition
-    test          <- icmp IP.NE constFalse conditionCode -- True if condition != 0
-    cbr test loopBlock continueBlock
+    conditionTest <- cgenExp condition
+    cbr conditionTest loopBlock continueBlock
 
     -- Generate code for loop block
     setBlock loopBlock

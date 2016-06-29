@@ -254,18 +254,10 @@ cgenExp (EApp id args) =
       astName = AST.Name $ idToStr id
       astType = int -- TODO Figure out type of function here
 
-{- TODO: Implement
-cgenExp (EPIncr e)   =
-cgenExp (EPDecr e)   =
-cgenExp (EIncr e)   =
-cgenExp (EDecr e)   =
--}
-
-
-
-
-
-
+cgenExp (EPIncr e)   = performTypedOperation e (EInt 1) iadd fadd
+cgenExp (EPDecr e)   = performTypedOperation e (EInt 1) isub fsub
+cgenExp (EIncr e)   = performTypedOperation e (EInt 1) iadd fadd
+cgenExp (EDecr e)   = performTypedOperation e (EInt 1) isub fsub
 cgenExp (ETimes e1 e2)  = performTypedOperation e1 e2 imul fmul
 cgenExp (EDiv e1 e2)    = performTypedOperation e1 e2 idiv fdiv
 cgenExp (EPlus e1 e2)   = performTypedOperation e1 e2 iadd fadd
@@ -554,22 +546,22 @@ performTypedComparison op1 op2 integerFunction integerPredicate floatingPointFun
 
 
 lt :: Operand -> Operand -> Codegen Operand
-lt a b = performTypedComparison a b icmp IP.SLT fcmp FP.SLT
+lt a b = performTypedComparison a b icmp IP.SLT fcmp FP.OLT
 
 gt :: Operand -> Operand -> Codegen Operand
-gt a b = performTypedComparison a b icmp IP.SGT fcmp FP.SGT
+gt a b = performTypedComparison a b icmp IP.SGT fcmp FP.OGT
 
 lteq :: Operand -> Operand -> Codegen Operand
-lteq a b = performTypedComparison a b icmp IP.SLE fcmp FP.SLE
+lteq a b = performTypedComparison a b icmp IP.SLE fcmp FP.OLE
 
 gteq :: Operand -> Operand -> Codegen Operand
-gteq a b = performTypedComparison a b icmp IP.SGE fcmp FP.SGE
+gteq a b = performTypedComparison a b icmp IP.SGE fcmp FP.OGE
 
 eq :: Operand -> Operand -> Codegen Operand
-eq a b = performTypedComparison a b icmp IP.SQ fcmp FP.SEQ
+eq a b = performTypedComparison a b icmp IP.EQ fcmp FP.OEQ
 
 neq :: Operand -> Operand -> Codegen Operand
-neq a b = performTypedComparison a b icmp IP.SE fcmp FP.SNE
+neq a b = performTypedComparison a b icmp IP.NE fcmp FP.ONE
 
 eand :: Operand -> Operand -> Codegen Operand
 eand a b = do

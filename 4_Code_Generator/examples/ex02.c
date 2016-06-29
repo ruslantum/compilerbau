@@ -1,3 +1,4 @@
+#include <stdbool.h>
 int main () {
 	int ia = 1;
 	int ib = 2;
@@ -10,7 +11,7 @@ int main () {
 	return iSum;
 }
 
-double dMain () {
+double mainDouble () {
 
 	 double da = 1.0;
 	 double db = 2.0;
@@ -24,7 +25,7 @@ double dMain () {
 }
 
 
-bool dBool() {
+bool mainBool() {
 	bool ba = true;
 	bool bb = false;
 

@@ -238,7 +238,7 @@ performTypedOperation e1 e2 integerFunction floatingPointFunction = do
 
 cgenExp :: Exp -> Codegen Operand
 cgenExp (ETrue)        = return $ cons $ C.Int 1 1
-cgenExp (EFalse)       = return $ cons $ C.Int 1 1
+cgenExp (EFalse)       = return $ cons $ C.Int 1 0
 cgenExp (EInt i)       = return $ cons $ C.Int 32 i
 cgenExp (EDouble d)    = return $ cons $ C.Float (F.Double d)
 cgenExp (EId id)       = getvar (idToStr id) >>= load
@@ -587,11 +587,15 @@ neq a b = performTypedComparison a b icmp IP.NE fcmp FP.ONE
 
 eand :: Operand -> Operand -> Codegen Operand
 eand a b = do
-  uitofp double a
+  fptoui int a
+  fptoui int b
+  instr (And a b []) int
 
 eor :: Operand -> Operand -> Codegen Operand
 eor a b = do
-  uitofp double a
+  fptoui int a
+  fptoui int b
+  instr (Or a b []) int
 
 fadd :: Operand -> Operand -> Codegen Operand
 fadd a b = instr (FAdd NoFastMathFlags a b []) double
@@ -628,6 +632,9 @@ cons = ConstantOperand
 
 uitofp :: AST.Type -> Operand -> Codegen Operand
 uitofp ty a = instr (UIToFP a ty []) double
+
+fptoui :: AST.Type -> Operand -> Codegen Operand
+fptoui ty a = instr (FPToUI a ty []) int
 
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]

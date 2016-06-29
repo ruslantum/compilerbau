@@ -35,6 +35,13 @@ import LexCPP
 import ParCPP
 import PrintCPP
 import ErrM
+---------------------------------------------------------------------------------
+-- Utils
+-------------------------------------------------------------------------------
+
+trunc :: String -> String 
+trunc s = (take 10 s) ++ ".."
+
 
 ---------------------------------------------------------------------------------
 -- Types
@@ -100,7 +107,9 @@ defaultValueForType t =
     Type_double -> constDoubleZero
 
 
-
+-- Entry point for code generation
+-- "A program is a sequence of definitions"
+-- Declares modules for functions, makes arguments available as variables, generates body blocks
 codegenTop :: Def -> LLVM()
 codegenTop (DFun returnType id arguments statements) =
   trace ("# Generating module for function" ++ show id) $ do
@@ -110,7 +119,7 @@ codegenTop (DFun returnType id arguments statements) =
       -- Convert arguments to (AST.Type, AST.Name) pairs
       argumentsAST = argsToSig arguments
       -- Add new blocks
-      blocks = createBlocks $ execCodegen $ trace ("Creating blocks") $ do
+      blocks = createBlocks $ execCodegen $ do
         entry <- addBlock entryBlockName
         setBlock entry
         -- Add function arguments as local variables
@@ -122,78 +131,10 @@ codegenTop (DFun returnType id arguments statements) =
                 store var $ local astName astType
                 assign strName var
 
-        forM statements $ \(statement) -> trace ("Creating llvm code for statement " ++ show statement) $ cgen statement
+        forM statements $ \(statement) -> cgen statement
 
 
 
-
-{-codegenTop :: S.Expr -> LLVM ()
-codegenTop (S.Function name args body) = do
-  define double name fnargs bls
-  where
-    fnargs = toSig args
-    bls = createBlocks $ execCodegen $ do
-      entry <- addBlock entryBlockName
-      setBlock entry
-      forM args $ \a -> do
-        var <- alloca double
-        store var (local (AST.Name a))
-        assign a var
-      cgen body >>= ret
-
-codegenTop (S.Extern name args) = do
-  external double name fnargs
-  where fnargs = toSig args
-
-codegenTop exp = do
-  define double "main" [] blks
-  where
-    blks = createBlocks $ execCodegen $ do
-      entry <- addBlock entryBlockName
-      setBlock entry
-      cgen exp >>= ret
--}
--------------------------------------------------------------------------------
--- Operations
--------------------------------------------------------------------------------
-
-lt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-lt a b = do
-  test <- fcmp FP.ULT a b
-  uitofp double test
-
-gt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-gt a b = do
-  test <- fcmp FP.UGT a b
-  uitofp double test
-
-lteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-lteq a b = do
-  test <- fcmp FP.ULE a b
-  uitofp double test
-
-gteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-gteq a b = do
-  test <- fcmp FP.UGE a b
-  uitofp double test
-
-eq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-eq a b = do
-  test <- fcmp FP.UEQ a b
-  uitofp double test
-
-neq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-neq a b = do
-  test <- fcmp FP.UNE a b
-  uitofp double test
-
-eand :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-eand a b = do
-  uitofp double a
-
-eor :: AST.Operand -> AST.Operand -> Codegen AST.Operand
-eor a b = do
-  uitofp double a
 
 
 
@@ -204,6 +145,7 @@ cgen :: Stm -> Codegen AST.Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
 
+-- Initialize a local variable  
 cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " ++ show id) $ do  
   res <- cgenExp e        -- Generate initialization code
   var <- alloca astType   -- Alloc a local variable
@@ -216,11 +158,19 @@ cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " 
     astType = typeToASTType t
     astName = AST.Name id
 
+-- Return expression
 cgen (SReturn e) = 
   do
     c <- cgenExp e
     ret c
     return c
+
+
+-- Return void 
+cgen SReturnVoid = 
+  do 
+    retVoid
+    return constFalse 
 
 cgen (SExp e) = cgenExp e
 
@@ -278,6 +228,14 @@ cgen (SWhile condition statements) =
 
 
 {- EXPRESSION-LEVEL CODE GENERATION -}
+performTypedOperation :: Exp -> Exp -> (AST.Operand -> AST.Operand -> Codegen AST.Operand) -> (AST.Operand -> AST.Operand -> Codegen AST.Operand) -> Codegen AST.Operand
+performTypedOperation e1 e2 integerFunction floatingPointFunction = do 
+  op1 <- cgenExp e1 
+  op2 <- cgenExp e2
+  case typeOfOperand op1 of
+    IntegerType _           -> integerFunction op1 op2 
+    FloatingPointType _ _   -> floatingPointFunction op1 op2  
+
 cgenExp :: Exp -> Codegen AST.Operand
 cgenExp (ETrue)        = return $ cons $ C.Int 1 1
 cgenExp (EFalse)       = return $ cons $ C.Int 1 1
@@ -296,29 +254,17 @@ cgenExp (EPDecr e)   =
 cgenExp (EIncr e)   =
 cgenExp (EDecr e)   =
 -}
-cgenExp (ETimes e1 e2)  =
-  do
-    ce1 <- cgenExp e1
-    ce2 <- cgenExp e2
-    fmul ce1 ce2
-cgenExp (EDiv e1 e2)  =
-  do
-    ce1 <- cgenExp e1
-    ce2 <- cgenExp e2
-    fdiv ce1 ce2
-cgenExp (EPlus e1 e2)  =
-  do
-    ce1 <- cgenExp e1
-    ce2 <- cgenExp e2
-    case typeOfOperand ce1 of
-      IntegerType _ -> iadd ce1 ce2
-      FloatingPointType _ _ -> fadd ce1 ce2
 
-cgenExp (EMinus e1 e2)  =
-  do
-    ce1 <- cgenExp e1
-    ce2 <- cgenExp e2
-    fsub ce1 ce2
+
+
+
+
+
+cgenExp (ETimes e1 e2)  = performTypedOperation e1 e2 imul fmul
+cgenExp (EDiv e1 e2)    = performTypedOperation e1 e2 idiv fdiv
+cgenExp (EPlus e1 e2)   = performTypedOperation e1 e2 iadd fadd
+cgenExp (EMinus e1 e2)  = performTypedOperation e1 e2 isub fsub
+
 cgenExp (ELt e1 e2) =
   do
     ce1 <- cgenExp e1
@@ -366,6 +312,7 @@ cgenExp (EAss e1 e2) =
     store a cval
     return cval
 
+
 -------------------------------------------------------------------------------
 -- Compilation
 -------------------------------------------------------------------------------
@@ -373,6 +320,7 @@ cgenExp (EAss e1 e2) =
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
+-- Entry point
 codegen :: AST.Module -> Program -> IO AST.Module
 codegen mod (PDefs fns) = withContext $ \context ->
   liftError $ withModuleFromAST context newast $ \m -> do
@@ -396,6 +344,7 @@ runLLVM = flip (execState . unLLVM)
 emptyModule :: String -> AST.Module
 emptyModule label = defaultModule { moduleName = label }
 
+-- Adds a definition 
 addDefn :: Definition -> LLVM ()
 addDefn d = do
   defs <- gets moduleDefinitions
@@ -404,6 +353,7 @@ addDefn d = do
 idToStr :: Id -> String
 idToStr (Id str) = str
 
+-- Defines a function as global
 define ::  AST.Type -> Id -> [(AST.Type, Name)] -> [BasicBlock] -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
@@ -413,21 +363,10 @@ define retty label argtys body = addDefn $
   , basicBlocks = body
   }
 
-external ::  AST.Type -> String -> [(AST.Type, Name)] -> LLVM ()
-external retty label argtys = addDefn $
-  GlobalDefinition $ functionDefaults {
-    name        = Name label
-  , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
-  , returnType  = retty
-  , basicBlocks = []
-  }
-
 
 -------------------------------------------------------------------------------
 -- Names
 -------------------------------------------------------------------------------
-
-
 
 type Names = Map.Map String Int
 
@@ -479,8 +418,8 @@ createBlocks m = map makeBlock $ sortBlocks $ Map.toList (blocks m)
 makeBlock :: (Name, BlockState) -> BasicBlock
 makeBlock (l, (BlockState _ s t)) = BasicBlock l s (maketerm t)
   where
-    maketerm (Just x) = x
-    maketerm Nothing = error $ "Block has no terminator: " ++ (show l)
+    maketerm (Just x) = trace ("Created block: "++ show x) x
+    maketerm Nothing = error $ "Block has no terminator: " ++ (show l) ++ " instructions: " ++ show t
 
 entryBlockName :: String
 entryBlockName = "entry"
@@ -500,8 +439,9 @@ fresh = do
   modify $ \s -> s { count = 1 + i }
   return $ i + 1
 
+-- Add action to current block
 instr :: Instruction -> AST.Type -> Codegen (Operand)
-instr ins t = trace ("Adding instruction " ++ show ins ++ " of type " ++ show t) $ do
+instr ins t = trace ("Adding instruction " ++ trunc (show ins) ++ " of type " ++ show t) $ do
   n <- fresh
   let ref = (UnName n)
   blk <- current
@@ -510,8 +450,9 @@ instr ins t = trace ("Adding instruction " ++ show ins ++ " of type " ++ show t)
 
   return $ local ref t
 
+-- Terminate current block
 terminator :: Named Terminator -> Codegen (Named Terminator)
-terminator trm = trace ("Adding terminator " ++ show trm) $ do
+terminator trm = trace ("Adding terminator " ++ trunc (show trm)) $ do
   blk <- current
   modifyBlock (blk { term = Just trm })
   return trm
@@ -536,6 +477,7 @@ addBlock bname = do
                    }
   return (Name qname)
 
+-- Sets a named block as current block
 setBlock :: Name -> Codegen Name
 setBlock bname = do
   modify $ \s -> s { currentBlock = bname }
@@ -561,11 +503,13 @@ current = do
 -- Symbol Table
 -------------------------------------------------------------------------------
 
+-- Associates a variable with a specified id
 assign :: String -> Operand -> Codegen ()
 assign var x = do
   lcls <- gets symtab
   modify $ \s -> s { symtab = [(var, x)] ++ lcls }
 
+-- Returns the variable associated with an id
 getvar :: String -> Codegen Operand
 getvar var = do
   syms <- gets symtab
@@ -574,12 +518,55 @@ getvar var = do
     Nothing -> error $ "Local variable not in scope: " ++ show var
 
 -------------------------------------------------------------------------------
-
 -- References
+-------------------------------------------------------------------------------
+
+-- Creates a local reference
 local ::  Name -> AST.Type -> Operand
 local n t = LocalReference t n
 
--- Arithmetic and Constants
+
+-------------------------------------------------------------------------------
+-- Low Level Code Generation for Operations
+-------------------------------------------------------------------------------
+
+lt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+lt a b = do
+  test <- fcmp FP.ULT a b
+  uitofp double test
+
+gt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+gt a b = do
+  test <- fcmp FP.UGT a b
+  uitofp double test
+
+lteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+lteq a b = do
+  test <- fcmp FP.ULE a b
+  uitofp double test
+
+gteq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+gteq a b = do
+  test <- fcmp FP.UGE a b
+  uitofp double test
+
+eq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eq a b = do
+  test <- fcmp FP.UEQ a b
+  uitofp double test
+
+neq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+neq a b = do
+  test <- fcmp FP.UNE a b
+  uitofp double test
+
+eand :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eand a b = do
+  uitofp double a
+
+eor :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eor a b = do
+  uitofp double a
 
 fadd :: Operand -> Operand -> Codegen Operand
 fadd a b = instr (FAdd NoFastMathFlags a b []) double
@@ -620,25 +607,41 @@ uitofp ty a = instr (UIToFP a ty []) double
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
 
--- Effects
+-------------------------------------------------------------------------------
+-- Low Level Code Generation for Calls, Variable declarations
+-------------------------------------------------------------------------------
+
 call :: Operand -> [Operand] -> Codegen Operand
 call fn args = instr (Call Nothing CC.C [] (Right fn) (toArgs args) [] []) InterpreterCPP.void -- TODO Get return type
 
+-- Creates variable of provided type
 alloca :: AST.Type -> Codegen Operand
 alloca ty = instr (Alloca ty Nothing 0 []) ty
 
+-- Stores value in a variable reference
 store :: Operand -> Operand -> Codegen Operand
 store ptr val = instr (Store False ptr val Nothing 0 []) $ typeOfOperand val
 
+-- Loads variable reference
 load :: Operand -> Codegen Operand
 load ptr = instr (Load False ptr Nothing 0 []) $ typeOfOperand ptr
 
--- Control Flow
+-------------------------------------------------------------------------------
+-- Low Level Code Generation for Control Flow operations
+-------------------------------------------------------------------------------
+
+-- Unconditional branching
 br :: Name -> Codegen (Named Terminator)
 br val = terminator $ Do $ Br val []
 
+-- Conditional branching
 cbr :: Operand -> Name -> Name -> Codegen (Named Terminator)
 cbr cond tr fl = terminator $ Do $ CondBr cond tr fl []
 
+-- Return from a function with return value
 ret :: Operand -> Codegen (Named Terminator)
 ret val = terminator $ Do $ Ret (Just val) []
+
+-- Return from a void function
+retVoid :: Codegen (Named Terminator)
+retVoid = terminator $ Do $ Ret Nothing []

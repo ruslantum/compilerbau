@@ -39,7 +39,7 @@ import ErrM
 -- Utils
 -------------------------------------------------------------------------------
 
-trunc :: String -> String 
+trunc :: String -> String
 trunc s = (take 10 s) ++ ".."
 
 
@@ -62,12 +62,12 @@ void    = VoidType
 
 
 
-constTrue = cons $ C.Int 1 1 
+constTrue = cons $ C.Int 1 1
 constFalse = cons $ C.Int 1 0
 
 constIntegerZero = cons $ C.Int 32 0
 
-constDoubleZero = cons $ C.Float (F.Double 0) 
+constDoubleZero = cons $ C.Float (F.Double 0)
 
 
 
@@ -90,19 +90,19 @@ typeToASTType t =
     Type_double -> double
     Type_void   -> InterpreterCPP.void
 
-typeOfOperand :: Operand -> AST.Type 
-typeOfOperand op = 
-  case op of 
+typeOfOperand :: Operand -> AST.Type
+typeOfOperand op =
+  case op of
     LocalReference t _ -> t
-    ConstantOperand c -> 
-      case c of 
-        C.Int _ _   -> int 
+    ConstantOperand c ->
+      case c of
+        C.Int _ _   -> int
         C.Float _   -> double
         C.GlobalReference t _ -> t
 
 
 defaultValueForType :: AbsCPP.Type -> Operand
-defaultValueForType t = 
+defaultValueForType t =
     case t of
     Type_bool   -> constFalse
     Type_int    -> constIntegerZero
@@ -147,8 +147,8 @@ cgen :: Stm -> Codegen Operand
 
 {- STATEMENT-LEVEL CODE GENERATION -}
 
--- Initialize a local variable  
-cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " ++ show id) $ do  
+-- Initialize a local variable
+cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " ++ show id) $ do
   res <- cgenExp e        -- Generate initialization code
   var <- allocNamed astType astName   -- Alloc a local variable
   -- store var $ defaultValueForType t -- store default initialization value
@@ -156,23 +156,23 @@ cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " 
   assign id var
   return var
 
-  where 
+  where
     astType = typeToASTType t
     astName = AST.Name id
 
 -- Return expression
-cgen (SReturn e) = 
+cgen (SReturn e) =
   do
     c <- cgenExp e
     ret c
     return c
 
 
--- Return void 
-cgen SReturnVoid = 
-  do 
+-- Return void
+cgen SReturnVoid =
+  do
     retVoid
-    return constFalse 
+    return constFalse
 
 cgen (SExp e) = cgenExp e
 
@@ -231,12 +231,12 @@ cgen (SWhile condition statements) =
 
 {- EXPRESSION-LEVEL CODE GENERATION -}
 performTypedOperation :: Exp -> Exp -> (Operand -> Operand -> Codegen Operand) -> (Operand -> Operand -> Codegen Operand) -> Codegen Operand
-performTypedOperation e1 e2 integerFunction floatingPointFunction = do 
-  op1 <- cgenExp e1 
+performTypedOperation e1 e2 integerFunction floatingPointFunction = do
+  op1 <- cgenExp e1
   op2 <- cgenExp e2
   case typeOfOperand op1 of
-    IntegerType _           -> integerFunction op1 op2 
-    FloatingPointType _ _   -> floatingPointFunction op1 op2  
+    IntegerType _           -> integerFunction op1 op2
+    FloatingPointType _ _   -> floatingPointFunction op1 op2
 
 cgenExp :: Exp -> Codegen Operand
 cgenExp (ETrue)        = return $ cons $ C.Int 1 1
@@ -250,7 +250,7 @@ cgenExp (EApp id args) =
   do
     argumentList <- mapM cgenExp args
     call (externf astName astType) argumentList
-    where 
+    where
       astName = AST.Name $ idToStr id
       astType = int -- TODO Figure out type of function here
 
@@ -351,7 +351,7 @@ runLLVM = flip (execState . unLLVM)
 emptyModule :: String -> AST.Module
 emptyModule label = defaultModule { moduleName = label }
 
--- Adds a definition 
+-- Adds a definition
 addDefn :: Definition -> LLVM ()
 addDefn d = do
   defs <- gets moduleDefinitions
@@ -448,8 +448,8 @@ fresh = do
 
 -- Add action to current block
 instr :: Instruction -> AST.Type -> Codegen (Operand)
-instr ins t = do 
-  n <- fresh 
+instr ins t = do
+  n <- fresh
   instrNamed ins t $ UnName n
 
 
@@ -546,36 +546,30 @@ externf n t = ConstantOperand ( C.GlobalReference t n)
 -------------------------------------------------------------------------------
 -- Low Level Code Generation for Operations
 -------------------------------------------------------------------------------
+performTypedComparison :: Operand -> Operand -> (IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand) -> IP.IntegerPredicate -> (FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand) -> FP.FloatingPointPredicate -> Codegen AST.Operand
+performTypedComparison op1 op2 integerFunction integerPredicate floatingPointFunction floatingPointPredicate = do
+  case typeOfOperand op1 of
+    IntegerType _           -> integerFunction integerPredicate op1 op2
+    FloatingPointType _ _   -> floatingPointFunction floatingPointPredicate op1 op2
+
 
 lt :: Operand -> Operand -> Codegen Operand
-lt a b = do
-  test <- fcmp FP.ULT a b
-  uitofp double test
+lt a b = performTypedComparison a b icmp IP.ULT fcmp FP.ULT
 
 gt :: Operand -> Operand -> Codegen Operand
-gt a b = do
-  test <- fcmp FP.UGT a b
-  uitofp double test
+gt a b = performTypedComparison a b icmp IP.UGT fcmp FP.UGT
 
 lteq :: Operand -> Operand -> Codegen Operand
-lteq a b = do
-  test <- fcmp FP.ULE a b
-  uitofp double test
+lteq a b = performTypedComparison a b icmp IP.ULE fcmp FP.ULE
 
 gteq :: Operand -> Operand -> Codegen Operand
-gteq a b = do
-  test <- fcmp FP.UGE a b
-  uitofp double test
+gteq a b = performTypedComparison a b icmp IP.UGE fcmp FP.UGE
 
 eq :: Operand -> Operand -> Codegen Operand
-eq a b = do
-  test <- fcmp FP.UEQ a b
-  uitofp double test
+eq a b = performTypedComparison a b icmp IP.EQ fcmp FP.UEQ
 
 neq :: Operand -> Operand -> Codegen Operand
-neq a b = do
-  test <- fcmp FP.UNE a b
-  uitofp double test
+neq a b = performTypedComparison a b icmp IP.NE fcmp FP.UNE
 
 eand :: Operand -> Operand -> Codegen Operand
 eand a b = do
@@ -594,19 +588,19 @@ iadd a b = instr (Add False False a b []) int
 fsub :: Operand -> Operand -> Codegen Operand
 fsub a b = instr (FSub NoFastMathFlags a b []) double
 
-isub :: Operand -> Operand -> Codegen Operand 
+isub :: Operand -> Operand -> Codegen Operand
 isub a b = instr (Sub False False a b []) int
 
 fmul :: Operand -> Operand -> Codegen Operand
 fmul a b = instr (FMul NoFastMathFlags a b []) double
 
-imul :: Operand -> Operand -> Codegen Operand 
+imul :: Operand -> Operand -> Codegen Operand
 imul a b = instr (Mul False False a b []) int
 
 fdiv :: Operand -> Operand -> Codegen Operand
 fdiv a b = instr (FDiv NoFastMathFlags a b []) double
 
-idiv :: Operand -> Operand -> Codegen Operand 
+idiv :: Operand -> Operand -> Codegen Operand
 idiv a b = instr (SDiv True a b []) int
 
 fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
@@ -636,7 +630,7 @@ call fn args = instr (Call Nothing CC.C [] (Right fn) (toArgs args) [] []) $ typ
 alloca :: AST.Type -> Codegen Operand
 alloca ty = instr (Alloca ty Nothing 0 []) ty
 
-allocNamed :: AST.Type -> AST.Name -> Codegen Operand 
+allocNamed :: AST.Type -> AST.Name -> Codegen Operand
 allocNamed ty name = instrNamed (Alloca ty Nothing 0 []) ty name
 
 

@@ -148,7 +148,7 @@ cgen :: Stm -> Codegen AST.Operand
 -- Initialize a local variable  
 cgen (SInit t (Id id) e) = trace ("CGEN SInit - Creating local variable named " ++ show id) $ do  
   res <- cgenExp e        -- Generate initialization code
-  var <- alloca astType   -- Alloc a local variable
+  var <- allocNamed astType astName   -- Alloc a local variable
   -- store var $ defaultValueForType t -- store default initialization value
   store var res
   assign id var
@@ -441,14 +441,21 @@ fresh = do
 
 -- Add action to current block
 instr :: Instruction -> AST.Type -> Codegen (Operand)
-instr ins t = trace ("Adding instruction " ++ trunc (show ins) ++ " of type " ++ show t) $ do
+instr ins t = do 
+  n <- fresh 
+  instrNamed ins t $ UnName n
+
+
+instrNamed :: Instruction -> AST.Type -> AST.Name -> Codegen (Operand)
+instrNamed ins t name = trace ("Adding instruction " ++ trunc (show ins) ++ " of type " ++ show t) $ do
   n <- fresh
-  let ref = (UnName n)
+  let ref = name
   blk <- current
   let i = stack blk
   modifyBlock (blk { stack = i ++ [ref := ins] } )
 
   return $ local ref t
+
 
 -- Terminate current block
 terminator :: Named Terminator -> Codegen (Named Terminator)
@@ -617,6 +624,10 @@ call fn args = instr (Call Nothing CC.C [] (Right fn) (toArgs args) [] []) Inter
 -- Creates variable of provided type
 alloca :: AST.Type -> Codegen Operand
 alloca ty = instr (Alloca ty Nothing 0 []) ty
+
+allocNamed :: AST.Type -> AST.Name -> Codegen Operand 
+allocNamed ty name = instrNamed (Alloca ty Nothing 0 []) ty name
+
 
 -- Stores value in a variable reference
 store :: Operand -> Operand -> Codegen Operand

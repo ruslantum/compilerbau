@@ -26,16 +26,3 @@ int main () {
 
 	return 0;
 }
-
-double dMain () {
-
-	 double da = 1.0;
-	 double db = 2.0;
-
-	 double dSum = da + db;
-	 double dDif = da - db;
-	 double dMul = da * db;
-	 double dDiv = da / db;
-
-	 return dSum;
-}

@@ -554,22 +554,22 @@ performTypedComparison op1 op2 integerFunction integerPredicate floatingPointFun
 
 
 lt :: Operand -> Operand -> Codegen Operand
-lt a b = performTypedComparison a b icmp IP.ULT fcmp FP.ULT
+lt a b = performTypedComparison a b icmp IP.SLT fcmp FP.SLT
 
 gt :: Operand -> Operand -> Codegen Operand
-gt a b = performTypedComparison a b icmp IP.UGT fcmp FP.UGT
+gt a b = performTypedComparison a b icmp IP.SGT fcmp FP.SGT
 
 lteq :: Operand -> Operand -> Codegen Operand
-lteq a b = performTypedComparison a b icmp IP.ULE fcmp FP.ULE
+lteq a b = performTypedComparison a b icmp IP.SLE fcmp FP.SLE
 
 gteq :: Operand -> Operand -> Codegen Operand
-gteq a b = performTypedComparison a b icmp IP.UGE fcmp FP.UGE
+gteq a b = performTypedComparison a b icmp IP.SGE fcmp FP.SGE
 
 eq :: Operand -> Operand -> Codegen Operand
-eq a b = performTypedComparison a b icmp IP.EQ fcmp FP.UEQ
+eq a b = performTypedComparison a b icmp IP.SQ fcmp FP.SEQ
 
 neq :: Operand -> Operand -> Codegen Operand
-neq a b = performTypedComparison a b icmp IP.NE fcmp FP.UNE
+neq a b = performTypedComparison a b icmp IP.SE fcmp FP.SNE
 
 eand :: Operand -> Operand -> Codegen Operand
 eand a b = do

@@ -3,8 +3,19 @@ int returnSomething() {
 	return something;
 }
 
+double returnSomeDouble() {
+	double someDouble = 3.1415;
+	return someDouble;
+}
+
 void doSomething() {
 	int something = returnSomething();
+	double someDouble = returnSomeDouble();
+	doNothing();
+	return;
+}
+
+void doNothing() {
 	return;
 }
 

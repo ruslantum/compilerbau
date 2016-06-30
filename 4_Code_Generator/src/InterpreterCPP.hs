@@ -109,19 +109,25 @@ defaultValueForType t =
     Type_double -> constDoubleZero
 
 
+
 -- Entry point for code generation
 -- "A program is a sequence of definitions"
 -- Declares modules for functions, makes arguments available as variables, generates body blocks
-codegenTop :: Def -> LLVM()
-codegenTop (DFun returnType id arguments statements) =
-  trace ("# Generating module for function" ++ show id) $ do
-    define returnTypeAST id argumentsAST blocks
+codegenTop :: Def -> [(String, AST.Type)] -> LLVM()
+codegenTop (DFun returnType id arguments statements) funTab = trace ("# Generating module for function" ++ show id) $ 
+  do
+    trace ("Function table for codegenTop call: " ++ show funTab ) $ define returnTypeAST id argumentsAST blocks
     where
       returnTypeAST = typeToASTType returnType
+
       -- Convert arguments to (AST.Type, AST.Name) pairs
       argumentsAST = argsToSig arguments
       -- Add new blocks
       blocks = createBlocks $ execCodegen $ do
+
+        -- Write the function table in every local scope
+        forM funTab (\(funId, funType) -> assign funId $ externf (AST.Name funId) funType) 
+
         entry <- addBlock entryBlockName
         setBlock entry
         -- Add function arguments as local variables
@@ -238,6 +244,9 @@ performTypedOperation e1 e2 integerFunction floatingPointFunction = do
     IntegerType _           -> integerFunction op1 op2 
     FloatingPointType _ _   -> floatingPointFunction op1 op2  
 
+
+
+
 cgenExp :: Exp -> Codegen Operand
 cgenExp (ETrue)        = return $ cons $ C.Int 1 1
 cgenExp (EFalse)       = return $ cons $ C.Int 1 1
@@ -245,14 +254,16 @@ cgenExp (EInt i)       = return $ cons $ C.Int 32 i
 cgenExp (EDouble d)    = return $ cons $ C.Float (F.Double d)
 cgenExp (EId id)       = getvar (idToStr id) >>= load
 
+ 
+
 -- Function call
-cgenExp (EApp id args) =
+cgenExp (EApp (Id functionId) args) = 
   do
+    returnType <- getvar functionId
     argumentList <- mapM cgenExp args
-    call (externf astName astType) argumentList
-    where 
-      astName = AST.Name $ idToStr id
-      astType = int -- TODO Figure out type of function here
+
+    call returnType argumentList
+
 
 {- TODO: Implement
 cgenExp (EPIncr e)   =
@@ -335,7 +346,8 @@ codegen mod (PDefs fns) = withContext $ \context ->
     putStrLn llstr
     return newast
   where
-    modn    = mapM codegenTop fns
+    funTab  = map (\(DFun funReturnType (Id funId) _ _) -> (funId, (typeToASTType funReturnType))) fns
+    modn    = mapM (\def -> codegenTop def funTab) fns
     newast  = runLLVM mod modn
 
 -------------------------------------------------------------------------------
@@ -350,6 +362,7 @@ runLLVM = flip (execState . unLLVM)
 
 emptyModule :: String -> AST.Module
 emptyModule label = defaultModule { moduleName = label }
+
 
 -- Adds a definition 
 addDefn :: Definition -> LLVM ()
@@ -426,7 +439,7 @@ makeBlock :: (Name, BlockState) -> BasicBlock
 makeBlock (l, (BlockState _ s t)) = BasicBlock l s (maketerm t)
   where
     maketerm (Just x) = trace ("Created block: "++ show x) x
-    maketerm Nothing = error $ "Block has no terminator: " ++ (show l) ++ " instructions: " ++ show t
+    maketerm Nothing = error $ "Block has no terminator: " ++ (show l) ++ " instructions: "
 
 entryBlockName :: String
 entryBlockName = "entry"
@@ -521,15 +534,17 @@ current = do
 assign :: String -> Operand -> Codegen ()
 assign var x = do
   lcls <- gets symtab
-  modify $ \s -> s { symtab = [(var, x)] ++ lcls }
+  trace ("assigning " ++ var ++ " ") $ modify $ \s -> s { symtab = [(var, x)] ++ lcls }
 
 -- Returns the variable associated with an id
 getvar :: String -> Codegen Operand
 getvar var = do
   syms <- gets symtab
   case lookup var syms of
-    Just x  -> return x
-    Nothing -> error $ "Local variable not in scope: " ++ show var
+    Just x  -> trace ("getvar " ++ var) $ return x
+    Nothing -> error $ "Local variable not in scope: " ++ show var ++ show syms
+
+
 
 -------------------------------------------------------------------------------
 -- References

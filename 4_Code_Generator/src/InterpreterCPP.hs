@@ -114,7 +114,7 @@ defaultValueForType t =
 -- "A program is a sequence of definitions"
 -- Declares modules for functions, makes arguments available as variables, generates body blocks
 codegenTop :: Def -> [(String, AST.Type)] -> LLVM()
-codegenTop (DFun returnType id arguments statements) funTab = trace ("# Generating module for function" ++ show id) $ 
+codegenTop (DFun returnType id arguments statements) funTab = trace ("# Generating module for function" ++ show id) $
   do
     trace ("Function table for codegenTop call: " ++ show funTab ) $ define returnTypeAST id argumentsAST blocks
     where
@@ -126,7 +126,7 @@ codegenTop (DFun returnType id arguments statements) funTab = trace ("# Generati
       blocks = createBlocks $ execCodegen $ do
 
         -- Write the function table in every local scope
-        forM funTab (\(funId, funType) -> assign funId $ externf (AST.Name funId) funType) 
+        forM funTab (\(funId, funType) -> assign funId $ externf (AST.Name funId) funType)
 
         entry <- addBlock entryBlockName
         setBlock entry
@@ -252,10 +252,10 @@ cgenExp (EInt i)       = return $ cons $ C.Int 32 i
 cgenExp (EDouble d)    = return $ cons $ C.Float (F.Double d)
 cgenExp (EId id)       = getvar (idToStr id) >>= load
 
- 
+
 
 -- Function call
-cgenExp (EApp (Id functionId) args) = 
+cgenExp (EApp (Id functionId) args) =
   do
     returnType <- getvar functionId
     argumentList <- mapM cgenExp args
@@ -334,7 +334,7 @@ cgenExp (EOr e1 e2) =
   do
     ce1 <- cgenExp e1
     ce2 <- cgenExp e2
-    eand ce1 ce2
+    eor ce1 ce2
 
 cgenExp (EAss e1 e2) =
   do

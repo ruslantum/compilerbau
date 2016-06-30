@@ -1,3 +1,8 @@
+
+void doNothing() {
+	return;
+}
+
 int returnSomething() {
 	int something = 1;
 	return something;
@@ -15,7 +20,4 @@ void doSomething() {
 	return;
 }
 
-void doNothing() {
-	return;
-}
 

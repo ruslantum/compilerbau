@@ -259,6 +259,8 @@ cgenExp (EApp (Id functionId) args) =
   do
     returnType <- getvar functionId
     argumentList <- mapM cgenExp args
+    call returnType argumentList
+
 
 cgenExp (EPIncr e) =
   do

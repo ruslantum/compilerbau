@@ -1,6 +1,11 @@
-; ModuleID = '../examples/ex03.c'
+; ModuleID = 'ex03.c'
 target datalayout = "e-m:o-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-apple-macosx10.11.0"
+
+; Function Attrs: nounwind ssp uwtable
+define void @doNothing() #0 {
+  ret void
+}
 
 ; Function Attrs: nounwind ssp uwtable
 define i32 @returnSomething() #0 {
@@ -11,10 +16,22 @@ define i32 @returnSomething() #0 {
 }
 
 ; Function Attrs: nounwind ssp uwtable
+define double @returnSomeDouble() #0 {
+  %someDouble = alloca double, align 8
+  store double 3.141500e+00, double* %someDouble, align 8
+  %1 = load double, double* %someDouble, align 8
+  ret double %1
+}
+
+; Function Attrs: nounwind ssp uwtable
 define void @doSomething() #0 {
   %something = alloca i32, align 4
+  %someDouble = alloca double, align 8
   %1 = call i32 @returnSomething()
   store i32 %1, i32* %something, align 4
+  %2 = call double @returnSomeDouble()
+  store double %2, double* %someDouble, align 8
+  call void @doNothing()
   ret void
 }
 
